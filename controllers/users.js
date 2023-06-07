@@ -1,16 +1,14 @@
 const User = require('../models/user');
 
 // Получение всех пользователей
-const getUsers = (req, res) => {
-  User.find()
-    .then((users) => res.send(users))
-    .catch((err) => res.status(500).send({ message: `Ошибка при получении списка пользователей: ${err}` }));
-};
+const getUsers = (req, res) => User.find()
+  .then((users) => res.send(users))
+  .catch((err) => res.status(500).send({ message: `Ошибка при получении списка пользователей: ${err}` }));
 
 // Получение пользователя по ID
 const getUserById = (req, res) => {
   const { userId } = req.params;
-  User.findById(userId)
+  return User.findById(userId)
     .then((user) => {
       if (!user) {
         return res.status(404).send({ message: 'Пользователь не найден' });
@@ -28,23 +26,23 @@ const getUserById = (req, res) => {
 // Обновление профиля пользователя
 const updateUser = (req, res) => {
   const { name, about } = req.body;
+
   if (name.length < 2 || name.length > 30) {
     return res.status(400).send({ message: 'Длина имени должна быть от 2 до 30 символов' });
   }
-  if (about.length < 2 || about.length > 30) {
-    return res.status(400).send({ message: 'Длина информации о себе должна быть от 2 до 30 символов' });
-  }
+
   return User.findByIdAndUpdate(req.user._id, { name, about }, { new: true })
     .then((user) => {
       if (!user) {
         return res.status(404).send({ message: 'Пользователь не найден' });
       }
-      // Создаем объект с обновленными данными пользователя
+
       const updatedUser = {
         _id: user._id,
         name: user.name,
         about: user.about,
       };
+
       return res.status(200).send(updatedUser);
     })
     .catch((err) => res.status(500).send({ message: `Ошибка при обновлении профиля пользователя: ${err}` }));
@@ -53,11 +51,13 @@ const updateUser = (req, res) => {
 // Обновление аватара пользователя
 const updateAvatar = (req, res) => {
   const { avatar } = req.body;
+
   return User.findByIdAndUpdate(req.user._id, { avatar }, { new: true })
     .then((user) => {
       if (!user) {
         return res.status(404).send({ message: 'Пользователь не найден' });
       }
+
       return res.send(user);
     })
     .catch((err) => res.status(500).send({ message: `Ошибка при обновлении аватара пользователя: ${err}` }));
@@ -66,12 +66,11 @@ const updateAvatar = (req, res) => {
 // Создание нового пользователя
 const createUser = (req, res) => {
   const { name, about, avatar } = req.body;
+
   if (name.length < 2 || name.length > 30) {
     return res.status(400).send({ message: 'Длина имени должна быть от 2 до 30 символов' });
   }
-  if (about.length < 2 || about.length > 30) {
-    return res.status(400).send({ message: 'Длина информации о себе должна быть от 2 до 30 символов' });
-  }
+
   return User.create({ name, about, avatar })
     .then((user) => res.status(201).send(user))
     .catch((err) => {

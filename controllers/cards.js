@@ -3,24 +3,23 @@ const Card = require('../models/card');
 // Обработчик для получения всех карточек
 const getCards = (req, res) => {
   Card.find()
-    .then((cards) => {
-      res.send(cards);
-    })
-    .catch(() => {
-      res.status(500).send({ message: 'Ошибка при получении списка карточек' });
-    });
+    .then((cards) => res.send(cards))
+    .catch(() => res.status(500).send({ message: 'Ошибка при получении списка карточек' }));
 };
 
 // Обработчик для создания карточки
 const createCard = (req, res) => {
   const { name, link } = req.body;
-  Card.create({ name, link, owner: req.user._id })
-    .then((card) => {
-      res.status(201).send(card);
-    })
-    .catch(() => {
-      res.status(500).send({ message: 'Ошибка при создании карточки' });
-    });
+  if (name.length < 2) {
+    return res.status(400).send({ message: 'Длина имени карточки должна быть не менее 2 символов' });
+  }
+  if (name.length > 30) {
+    return res.status(400).send({ message: 'Длина имени карточки должна быть не более 30 символов' });
+  }
+
+  return Card.create({ name, link, owner: req.user._id })
+    .then((card) => res.status(201).send(card))
+    .catch(() => res.status(500).send({ message: 'Ошибка при создании карточки' }));
 };
 
 // Обработчик для удаления карточки по идентификатору
@@ -33,9 +32,7 @@ const deleteCard = (req, res) => {
       }
       return res.send(card);
     })
-    .catch(() => {
-      res.status(500).send({ message: 'Ошибка при удалении карточки' });
-    });
+    .catch(() => res.status(500).send({ message: 'Ошибка при удалении карточки' }));
 };
 
 // Обработчик для добавления лайка карточке
@@ -47,9 +44,7 @@ const likeCard = (req, res) => {
       }
       return res.send(card);
     })
-    .catch(() => {
-      res.status(500).send({ message: 'Ошибка при добавлении лайка карточке' });
-    });
+    .catch(() => res.status(500).send({ message: 'Ошибка при добавлении лайка карточке' }));
 };
 
 // Обработчик для удаления лайка с карточки
@@ -61,9 +56,7 @@ const dislikeCard = (req, res) => {
       }
       return res.send(card);
     })
-    .catch(() => {
-      res.status(500).send({ message: 'Ошибка при удалении лайка с карточки' });
-    });
+    .catch(() => res.status(500).send({ message: 'Ошибка при удалении лайка с карточки' }));
 };
 
 module.exports = {
