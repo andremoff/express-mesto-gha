@@ -1,17 +1,13 @@
 const User = require('../models/user');
 
-// Обработчик для получения всех пользователей
+// Получение всех пользователей
 const getUsers = (req, res) => {
   User.find()
-    .then((users) => {
-      res.send(users);
-    })
-    .catch(() => {
-      res.status(500).send({ message: 'Ошибка при получении списка пользователей' });
-    });
+    .then((users) => res.send(users))
+    .catch((err) => res.status(500).send({ message: `Ошибка при получении списка пользователей: ${err}` }));
 };
 
-// Обработчик для получения пользователя по _id
+// Получение пользователя по ID
 const getUserById = (req, res) => {
   const { userId } = req.params;
   User.findById(userId)
@@ -25,11 +21,11 @@ const getUserById = (req, res) => {
       if (err.name === 'CastError') {
         return res.status(400).send({ message: 'Неверный формат идентификатора пользователя' });
       }
-      return res.status(500).send({ message: 'Ошибка при получении пользователя' });
+      return res.status(500).send({ message: `Ошибка при получении пользователя: ${err}` });
     });
 };
 
-// Обработчик для обновления профиля пользователя
+// Обновление профиля пользователя
 const updateUser = (req, res) => {
   const { name, about } = req.body;
   User.findByIdAndUpdate(req.user._id, { name, about }, { new: true })
@@ -37,14 +33,18 @@ const updateUser = (req, res) => {
       if (!user) {
         return res.status(404).send({ message: 'Пользователь не найден' });
       }
-      return res.send(user);
+      const updatedUser = {
+        _id: user._id,
+        name: user.name,
+        about: user.about,
+        // Добавьте другие поля пользователя, если необходимо
+      };
+      return res.send(updatedUser);
     })
-    .catch(() => {
-      res.status(500).send({ message: 'Ошибка при обновлении профиля пользователя' });
-    });
+    .catch((err) => res.status(500).send({ message: `Ошибка при обновлении профиля пользователя: ${err}` }));
 };
 
-// Обработчик для обновления аватара пользователя
+// Обновление аватара пользователя
 const updateAvatar = (req, res) => {
   const { avatar } = req.body;
   User.findByIdAndUpdate(req.user._id, { avatar }, { new: true })
@@ -54,25 +54,20 @@ const updateAvatar = (req, res) => {
       }
       return res.send(user);
     })
-    .catch(() => {
-      res.status(500).send({ message: 'Ошибка при обновлении аватара пользователя' });
-    });
+    .catch((err) => res.status(500).send({ message: `Ошибка при обновлении аватара пользователя: ${err}` }));
 };
 
-// Обработчик для создания пользователя
+// Создание нового пользователя
 const createUser = (req, res) => {
   const { name, about, avatar } = req.body;
 
   User.create({ name, about, avatar })
-    .then((user) => {
-      res.status(201).send(user);
-    })
+    .then((user) => res.status(201).send(user))
     .catch((err) => {
       if (err.name === 'ValidationError') {
-        res.status(400).send({ message: 'Ошибка валидации' });
-      } else {
-        res.status(500).send({ message: 'Ошибка при создании пользователя' });
+        return res.status(400).send({ message: 'Ошибка валидации' });
       }
+      return res.status(500).send({ message: `Ошибка при создании пользователя: ${err}` });
     });
 };
 
