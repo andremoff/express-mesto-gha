@@ -21,8 +21,11 @@ const getUserById = (req, res) => {
       }
       return res.send(user);
     })
-    .catch(() => {
-      res.status(500).send({ message: 'Ошибка при получении пользователя' });
+    .catch((err) => {
+      if (err.name === 'CastError') {
+        return res.status(400).send({ message: 'Неверный формат идентификатора пользователя' });
+      }
+      return res.status(500).send({ message: 'Ошибка при получении пользователя' });
     });
 };
 
