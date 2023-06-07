@@ -1,5 +1,5 @@
+const mongoose = require('mongoose');
 const User = require('../models/user');
-const mongoose = require('../models/user');
 
 // Получение списка пользователей
 const getUsers = (req, res) => {

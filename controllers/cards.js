@@ -1,6 +1,6 @@
 const url = require('url');
+const mongoose = require('mongoose');
 const Card = require('../models/card');
-const mongoose = require('../models/card');
 
 // Обработчик для получения всех карточек
 const getCards = (req, res) => {
