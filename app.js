@@ -8,6 +8,12 @@ const PORT = 3000;
 
 app.use(express.json());
 
+// Миддлвэр для авторизации
+app.use((req, res, next) => {
+  req.user = { _id: '6480a5c8122920234cf56981' };
+  next();
+});
+
 app.use('/users', usersRouter);
 app.use('/cards', cardsRouter);
 
