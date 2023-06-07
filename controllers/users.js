@@ -1,4 +1,5 @@
 const User = require('../models/user');
+const mongoose = require('../models/user');
 
 // Получение списка пользователей
 const getUsers = (req, res) => {
@@ -9,7 +10,13 @@ const getUsers = (req, res) => {
 
 // Получение информации о пользователе по ID
 const getUserById = (req, res) => {
-  User.findById(req.params.userId)
+  const { userId } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    return res.status(400).json({ message: 'Некорректный ID пользователя' });
+  }
+
+  return User.findById(userId)
     .then((user) => {
       if (!user) {
         return res.status(404).json({ message: 'Пользователь с указанным ID не найден' });
@@ -25,6 +32,10 @@ const updateUser = (req, res) => {
 
   if (name && (name.length < 2 || name.length > 30)) {
     return res.status(400).json({ message: 'Длина имени должна быть от 2 до 30 символов' });
+  }
+
+  if (about && (about.length < 2 || about.length > 30)) {
+    return res.status(400).json({ message: 'Длина поля about должна быть от 2 до 30 символов' });
   }
 
   return User.findByIdAndUpdate(req.user._id, { name, about }, { new: true })
@@ -63,7 +74,7 @@ const updateAvatar = (req, res) => {
 const createUser = (req, res) => {
   const { name, about, avatar } = req.body;
 
-  if (name.length < 2 || name.length > 30) {
+  if (!name || name.length < 2 || name.length > 30) {
     return res.status(400).json({ message: 'Длина имени должна быть от 2 до 30 символов' });
   }
 
