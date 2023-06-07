@@ -1,40 +1,36 @@
 const User = require('../models/user');
 
-// Получение всех пользователей
-const getUsers = (req, res) => User.find()
-  .then((users) => res.send(users))
-  .catch((err) => res.status(500).send({ message: `Ошибка при получении списка пользователей: ${err}` }));
+// Получение списка пользователей
+const getUsers = (req, res) => {
+  User.find({})
+    .then((users) => res.json({ data: users }))
+    .catch(() => res.status(500).json({ message: 'Ошибка на сервере при получении списка пользователей' }));
+};
 
-// Получение пользователя по ID
+// Получение информации о пользователе по ID
 const getUserById = (req, res) => {
-  const { userId } = req.params;
-  return User.findById(userId)
+  User.findById(req.params.userId)
     .then((user) => {
       if (!user) {
-        return res.status(404).send({ message: 'Пользователь не найден' });
+        return res.status(404).json({ message: 'Пользователь с указанным ID не найден' });
       }
-      return res.send(user);
+      return res.json({ data: user });
     })
-    .catch((err) => {
-      if (err.name === 'CastError') {
-        return res.status(400).send({ message: 'Неверный формат идентификатора пользователя' });
-      }
-      return res.status(500).send({ message: `Ошибка при получении пользователя: ${err}` });
-    });
+    .catch(() => res.status(500).json({ message: 'Ошибка на сервере при поиске пользователя' }));
 };
 
 // Обновление профиля пользователя
 const updateUser = (req, res) => {
   const { name, about } = req.body;
 
-  if (name.length < 2 || name.length > 30) {
-    return res.status(400).send({ message: 'Длина имени должна быть от 2 до 30 символов' });
+  if (name && (name.length < 2 || name.length > 30)) {
+    return res.status(400).json({ message: 'Длина имени должна быть от 2 до 30 символов' });
   }
 
   return User.findByIdAndUpdate(req.user._id, { name, about }, { new: true })
     .then((user) => {
       if (!user) {
-        return res.status(404).send({ message: 'Пользователь не найден' });
+        return res.status(404).json({ message: 'Пользователь не найден' });
       }
 
       const updatedUser = {
@@ -43,9 +39,9 @@ const updateUser = (req, res) => {
         about: user.about,
       };
 
-      return res.status(200).send(updatedUser);
+      return res.status(200).json(updatedUser);
     })
-    .catch((err) => res.status(500).send({ message: `Ошибка при обновлении профиля пользователя: ${err}` }));
+    .catch((err) => res.status(500).json({ message: `Ошибка при обновлении профиля пользователя: ${err}` }));
 };
 
 // Обновление аватара пользователя
@@ -55,12 +51,12 @@ const updateAvatar = (req, res) => {
   return User.findByIdAndUpdate(req.user._id, { avatar }, { new: true })
     .then((user) => {
       if (!user) {
-        return res.status(404).send({ message: 'Пользователь не найден' });
+        return res.status(404).json({ message: 'Пользователь не найден' });
       }
 
-      return res.send(user);
+      return res.json(user);
     })
-    .catch((err) => res.status(500).send({ message: `Ошибка при обновлении аватара пользователя: ${err}` }));
+    .catch((err) => res.status(500).json({ message: `Ошибка при обновлении аватара пользователя: ${err}` }));
 };
 
 // Создание нового пользователя
@@ -68,16 +64,16 @@ const createUser = (req, res) => {
   const { name, about, avatar } = req.body;
 
   if (name.length < 2 || name.length > 30) {
-    return res.status(400).send({ message: 'Длина имени должна быть от 2 до 30 символов' });
+    return res.status(400).json({ message: 'Длина имени должна быть от 2 до 30 символов' });
   }
 
   return User.create({ name, about, avatar })
-    .then((user) => res.status(201).send(user))
+    .then((user) => res.status(201).json(user))
     .catch((err) => {
       if (err.name === 'ValidationError') {
-        return res.status(400).send({ message: 'Ошибка валидации' });
+        return res.status(400).json({ message: 'Ошибка валидации' });
       }
-      return res.status(500).send({ message: `Ошибка при создании пользователя: ${err}` });
+      return res.status(500).json({ message: `Ошибка при создании пользователя: ${err}` });
     });
 };
 
