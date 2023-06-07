@@ -18,10 +18,8 @@ app.use('/users', usersRouter);
 app.use('/cards', cardsRouter);
 
 // Обработка 404 Not Found
-app.use((req, res, next) => {
-  const error = new Error('Запрашиваемый ресурс не найден');
-  error.status = 404;
-  next(error);
+app.use((req, res) => {
+  res.status(404).json({ message: 'Запрашиваемый ресурс не найден' });
 });
 
 // Обработчик ошибок
