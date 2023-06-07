@@ -41,4 +41,5 @@
 
 ## Автор
 
-* **Андрей Дремов** - *Проектная работа* - [andremoff](https://andremoff.github.io/express-mesto-gha/)
+* **Андрей Дремов** - [andremoff](https://github.com/andremoff)
+* **Проектная работа** - [express-mesto-gha](https://andremoff.github.io/express-mesto-gha/)
