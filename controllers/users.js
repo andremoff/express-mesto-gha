@@ -28,18 +28,24 @@ const getUserById = (req, res) => {
 // Обновление профиля пользователя
 const updateUser = (req, res) => {
   const { name, about } = req.body;
-  User.findByIdAndUpdate(req.user._id, { name, about }, { new: true })
+  if (name.length < 2 || name.length > 30) {
+    return res.status(400).send({ message: 'Длина имени должна быть от 2 до 30 символов' });
+  }
+  if (about.length < 2 || about.length > 30) {
+    return res.status(400).send({ message: 'Длина информации о себе должна быть от 2 до 30 символов' });
+  }
+  return User.findByIdAndUpdate(req.user._id, { name, about }, { new: true })
     .then((user) => {
       if (!user) {
         return res.status(404).send({ message: 'Пользователь не найден' });
       }
+      // Создаем объект с обновленными данными пользователя
       const updatedUser = {
         _id: user._id,
         name: user.name,
         about: user.about,
-        // Добавьте другие поля пользователя, если необходимо
       };
-      return res.send(updatedUser);
+      return res.status(200).send(updatedUser);
     })
     .catch((err) => res.status(500).send({ message: `Ошибка при обновлении профиля пользователя: ${err}` }));
 };
@@ -47,7 +53,7 @@ const updateUser = (req, res) => {
 // Обновление аватара пользователя
 const updateAvatar = (req, res) => {
   const { avatar } = req.body;
-  User.findByIdAndUpdate(req.user._id, { avatar }, { new: true })
+  return User.findByIdAndUpdate(req.user._id, { avatar }, { new: true })
     .then((user) => {
       if (!user) {
         return res.status(404).send({ message: 'Пользователь не найден' });
@@ -60,8 +66,13 @@ const updateAvatar = (req, res) => {
 // Создание нового пользователя
 const createUser = (req, res) => {
   const { name, about, avatar } = req.body;
-
-  User.create({ name, about, avatar })
+  if (name.length < 2 || name.length > 30) {
+    return res.status(400).send({ message: 'Длина имени должна быть от 2 до 30 символов' });
+  }
+  if (about.length < 2 || about.length > 30) {
+    return res.status(400).send({ message: 'Длина информации о себе должна быть от 2 до 30 символов' });
+  }
+  return User.create({ name, about, avatar })
     .then((user) => res.status(201).send(user))
     .catch((err) => {
       if (err.name === 'ValidationError') {
