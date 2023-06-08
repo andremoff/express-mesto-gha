@@ -1,11 +1,13 @@
 const express = require('express');
 const mongoose = require('mongoose');
+const helmet = require('helmet');
 const usersRouter = require('./routes/users');
 const cardsRouter = require('./routes/cards');
 
 const app = express();
 const PORT = 3000;
 
+app.use(helmet());
 app.use(express.json());
 
 // Промежуточное ПО для авторизации

@@ -1,5 +1,6 @@
-const url = require('url');
+const { URL } = require('url');
 const mongoose = require('mongoose');
+const { ValidationError } = require('mongoose').Error;
 const Card = require('../models/card');
 
 // Обработчик для получения всех карточек
@@ -21,14 +22,26 @@ const createCard = (req, res) => {
     return res.status(400).json({ message: 'Длина имени карточки должна быть от 2 до 30 символов' });
   }
 
-  const isValidURL = url.parse(link).protocol && url.parse(link).host;
+  let isValidURL;
+  try {
+    const urlObj = new URL(link);
+    isValidURL = urlObj.protocol && urlObj.host;
+  } catch (error) {
+    isValidURL = false;
+  }
+
   if (!isValidURL) {
     return res.status(400).json({ message: 'Поле link должно быть валидным URL' });
   }
 
   return Card.create({ name, link, owner: req.user._id })
     .then((card) => res.status(201).json(card))
-    .catch(() => res.status(500).json({ message: 'Ошибка при создании карточки' }));
+    .catch((error) => {
+      if (error instanceof ValidationError) {
+        return res.status(400).json({ message: 'Ошибка валидации карточки' });
+      }
+      return res.status(500).json({ message: 'Ошибка при создании карточки' });
+    });
 };
 
 // Обработчик для добавления лайка карточке

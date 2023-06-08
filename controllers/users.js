@@ -17,49 +17,46 @@ const getUserById = (req, res) => {
   }
 
   return User.findById(userId)
-    .then((user) => {
-      if (!user) {
+    .orFail(() => new Error('NotFound'))
+    .then((user) => res.json({ data: user }))
+    .catch((err) => {
+      if (err.message === 'NotFound') {
         return res.status(404).json({ message: 'Пользователь с указанным ID не найден' });
       }
-      return res.json({ data: user });
-    })
-    .catch(() => res.status(500).json({ message: 'Ошибка на сервере при поиске пользователя' }));
+      return res.status(500).json({ message: 'Ошибка на сервере при поиске пользователя' });
+    });
 };
 
 // Обновление профиля пользователя
 const updateUser = (req, res) => {
   const { name, about } = req.body;
 
-  if (name && (name.length < 2 || name.length > 30)) {
-    return res.status(400).json({ message: 'Длина имени должна быть от 2 до 30 символов' });
-  }
-
-  if (about && (about.length < 2 || about.length > 30)) {
-    return res.status(400).json({ message: 'Длина поля about должна быть от 2 до 30 символов' });
-  }
-
-  return User.findByIdAndUpdate(req.user._id, { name, about }, { new: true })
+  return User.findByIdAndUpdate(req.user._id, { name, about }, { new: true, runValidators: true })
+    .orFail(() => new Error('NotFound'))
     .then((user) => {
-      if (!user) {
-        return res.status(404).json({ message: 'Пользователь не найден' });
-      }
-
       const updatedUser = {
         _id: user._id,
         name: user.name,
         about: user.about,
       };
-
       return res.status(200).json(updatedUser);
     })
-    .catch((err) => res.status(500).json({ message: `Ошибка при обновлении профиля пользователя: ${err}` }));
+    .catch((err) => {
+      if (err.name === 'NotFound') {
+        return res.status(404).json({ message: 'Пользователь не найден' });
+      }
+      if (err.name === 'ValidationError') {
+        return res.status(400).json({ message: 'Ошибка валидации' });
+      }
+      return res.status(500).json({ message: `Ошибка при обновлении профиля пользователя: ${err}` });
+    });
 };
 
 // Обновление аватара пользователя
 const updateAvatar = (req, res) => {
   const { avatar } = req.body;
 
-  return User.findByIdAndUpdate(req.user._id, { avatar }, { new: true })
+  return User.findByIdAndUpdate(req.user._id, { avatar }, { new: true, runValidators: true })
     .then((user) => {
       if (!user) {
         return res.status(404).json({ message: 'Пользователь не найден' });
