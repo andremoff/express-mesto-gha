@@ -35,7 +35,12 @@ const createCard = (req, res) => {
   }
 
   return Card.create({ name, link, owner: req.user._id })
-    .then((card) => res.status(201).json(card))
+    .then((card) => {
+      const { _id } = card;
+      return res.status(201).json({
+        _id, name, link, owner: req.user._id,
+      });
+    })
     .catch((error) => {
       if (error instanceof ValidationError) {
         return res.status(400).json({ message: 'Ошибка валидации карточки' });
@@ -57,7 +62,12 @@ const likeCard = (req, res) => {
       if (!card) {
         return res.status(404).json({ message: 'Карточка не найдена' });
       }
-      return res.json(card);
+      const {
+        _id, name, link, owner, likes,
+      } = card;
+      return res.status(200).json({
+        _id, name, link, owner, likes,
+      });
     })
     .catch(() => res.status(500).json({ message: 'Ошибка при добавлении лайка карточке' }));
 };
@@ -75,7 +85,12 @@ const dislikeCard = (req, res) => {
       if (!card) {
         return res.status(404).json({ message: 'Карточка не найдена' });
       }
-      return res.json(card);
+      const {
+        _id, name, link, owner, likes,
+      } = card;
+      return res.status(200).json({
+        _id, name, link, owner, likes,
+      });
     })
     .catch(() => res.status(500).json({ message: 'Ошибка при удалении лайка с карточки' }));
 };
@@ -93,7 +108,12 @@ const deleteCard = (req, res) => {
       if (!card) {
         return res.status(404).json({ message: 'Карточка не найдена' });
       }
-      return res.json(card);
+      const {
+        _id, name, link, owner, likes,
+      } = card;
+      return res.status(200).json({
+        _id, name, link, owner, likes,
+      });
     })
     .catch(() => res.status(500).json({ message: 'Ошибка при удалении карточки' }));
 };
