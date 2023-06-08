@@ -105,15 +105,12 @@ const deleteCard = (req, res) => {
 
   return Card.findByIdAndRemove(cardId)
     .then((card) => {
-      let cardData = card;
-      if (!cardData) {
-        cardData = {
-          _id: cardId, name: '', link: '', owner: req.user._id, likes: [],
-        };
+      if (!card) {
+        return res.status(404).json({ message: 'Карточка не найдена' });
       }
       const {
         _id, name, link, owner, likes,
-      } = cardData;
+      } = card;
       return res.status(200).json({
         _id, name, link, owner, likes,
       });
