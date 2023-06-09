@@ -57,14 +57,17 @@ const updateAvatar = (req, res) => {
   const { avatar } = req.body;
 
   return User.findByIdAndUpdate(req.user._id, { avatar }, { new: true, runValidators: true })
-    .then((user) => {
-      if (!user) {
+    .orFail(() => new Error('NotFound'))
+    .then((user) => res.json({ data: user }))
+    .catch((err) => {
+      if (err.message === 'NotFound') {
         return res.status(404).json({ message: 'Пользователь не найден' });
       }
-
-      return res.json(user);
-    })
-    .catch((err) => res.status(500).json({ message: `Ошибка при обновлении аватара пользователя: ${err}` }));
+      if (err.name === 'ValidationError') {
+        return res.status(400).json({ message: 'Ошибка валидации' });
+      }
+      return res.status(500).json({ message: `Ошибка при обновлении аватара пользователя: ${err}` });
+    });
 };
 
 // Создание нового пользователя
