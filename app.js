@@ -1,37 +1,74 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const helmet = require('helmet');
+const csurf = require('csurf');
+const escapeHtml = require('escape-html');
+const rateLimit = require('express-rate-limit');
+const { celebrate, Joi, errors } = require('celebrate');
+const { login, createUser } = require('./controllers/users');
 const usersRouter = require('./routes/users');
 const cardsRouter = require('./routes/cards');
+const auth = require('./middlewares/auth');
+const handleError = require('./middlewares/handleError');
 
 const app = express();
 const PORT = 3000;
 
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+});
+
 app.use(helmet());
+app.use(limiter);
+app.use(csurf());
 app.use(express.json());
 
-// Промежуточное ПО для авторизации
-app.use((req, res, next) => {
-  req.user = { _id: '6480a5c8122920234cf56981' };
+app.post('/signup', celebrate({
+  body: Joi.object().keys({
+    name: Joi.string().min(2).max(30).required(),
+    about: Joi.string().min(2).max(30).required(),
+    avatar: Joi.string().uri().required(),
+    email: Joi.string().email().required(),
+    password: Joi.string().min(6).required(),
+  }),
+}), (req, res, next) => {
+  req.body = {
+    name: escapeHtml(req.body.name),
+    about: escapeHtml(req.body.about),
+    avatar: escapeHtml(req.body.avatar),
+    email: escapeHtml(req.body.email),
+    password: escapeHtml(req.body.password),
+  };
   next();
+}, createUser);
+
+app.post('/signin', celebrate({
+  body: Joi.object().keys({
+    email: Joi.string().email().required(),
+    password: Joi.string().min(6).required(),
+  }),
+}), (req, res, next) => {
+  req.body = {
+    email: escapeHtml(req.body.email),
+    password: escapeHtml(req.body.password),
+  };
+  next();
+}, login);
+
+app.use('/users', auth, usersRouter);
+app.use('/cards', auth, cardsRouter);
+
+app.use(errors());
+
+app.use((req, res, next) => {
+  const err = new Error('Запрашиваемый ресурс не найден');
+  err.status = 404;
+  next(err);
 });
 
-app.use('/users', usersRouter);
-app.use('/cards', cardsRouter);
+app.use(handleError);
 
-// Обработка 404 Not Found
-app.use((req, res) => {
-  res.status(404).json({ message: 'Запрашиваемый ресурс не найден' });
-});
-
-// Обработчик ошибок
-app.use((err, req, res) => {
-  const status = err.status || 500;
-  const message = err.message || 'Внутренняя ошибка сервера';
-  res.status(status).json({ message });
-});
-
-// Подключение к серверу MongoDB
 mongoose.connect('mongodb://localhost:27017/mestodb', { useNewUrlParser: true });
 
 app.listen(PORT);
