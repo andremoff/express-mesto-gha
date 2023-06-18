@@ -1,7 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const helmet = require('helmet');
-const csurf = require('csurf');
+const session = require('express-session');
 const escapeHtml = require('escape-html');
 const rateLimit = require('express-rate-limit');
 const { celebrate, Joi, errors } = require('celebrate');
@@ -21,7 +21,12 @@ const limiter = rateLimit({
 
 app.use(helmet());
 app.use(limiter);
-app.use(csurf());
+app.use(session({
+  secret: 'your_session_secret',
+  resave: false,
+  saveUninitialized: true,
+  cookie: { secure: true },
+}));
 app.use(express.json());
 
 app.post('/signup', celebrate({
