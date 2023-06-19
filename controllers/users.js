@@ -110,7 +110,7 @@ const createUser = async (req, res, next) => {
     });
 
     if (error) {
-      throw new BadRequestError('Ошибка валидации'); // Исправлено: Помечено как исправление
+      throw new BadRequestError('Ошибка валидации');
     }
 
     const user = await User.create({
@@ -132,7 +132,7 @@ const createUser = async (req, res, next) => {
       token,
     });
   } catch (err) {
-    if (err instanceof BadRequestError) { // Исправлено: Помечено как исправление
+    if (err instanceof BadRequestError) {
       return next(err);
     }
     if (err.name === 'MongoError' && err.code === 11000) {
