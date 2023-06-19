@@ -33,7 +33,7 @@ const createCard = (req, res, next) => {
 
   return Card.create({ name, link, owner })
     .then((card) => {
-      res.status(201).json({ card });
+      res.status(201).json({ data: card });
     })
     .catch((err) => {
       if (err.code === 11000) {

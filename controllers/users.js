@@ -30,7 +30,7 @@ const getUserById = (req, res, next) => {
       if (!user) {
         throw new NotFoundError('Пользователь с указанным ID не найден');
       }
-      return res.status(404).json({ message: 'Пользователь с указанным ID не найден' });
+      res.json({ data: user });
     })
     .catch(next);
 };
@@ -42,7 +42,7 @@ const getCurrentUser = (req, res, next) => {
       if (!user) {
         throw new NotFoundError('Пользователь не найден');
       }
-      return res.json({ data: user });
+      res.json({ data: user });
     })
     .catch(next);
 };
@@ -76,7 +76,7 @@ const updateUser = async (req, res, next) => {
 
     const updatedUser = await user.save();
 
-    res.status(200).json(updatedUser);
+    res.json({ data: updatedUser });
   } catch (err) {
     if (err.name === 'ValidationError') {
       next(new BadRequestError('Ошибка валидации полей name и about'));
