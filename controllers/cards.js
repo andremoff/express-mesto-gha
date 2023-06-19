@@ -11,7 +11,7 @@ const getCards = (req, res, next) => {
       if (!cards) {
         throw new NotFoundError('Карточки не найдены');
       }
-      res.send({ data: cards });
+      res.json({ data: cards });
     })
     .catch(next);
 };
@@ -34,7 +34,7 @@ const createCard = (req, res, next) => {
 
   return Card.create({ name, link, owner })
     .then((card) => {
-      res.send({ data: card });
+      res.json({ data: card });
     })
     .catch(next);
 };
@@ -50,7 +50,7 @@ const likeCard = (req, res, next) => {
       if (!card) {
         throw new NotFoundError('Карточка с указанным id не найдена.');
       }
-      res.send({ data: card });
+      res.json({ data: card });
     })
     .catch(next);
 };
@@ -66,7 +66,7 @@ const dislikeCard = (req, res, next) => {
       if (!card) {
         throw new NotFoundError('Карточка с указанным id не найдена.');
       }
-      res.send({ data: card });
+      res.json({ data: card });
     })
     .catch(next);
 };
@@ -81,7 +81,7 @@ const deleteCard = (req, res, next) => {
         throw new ForbiddenError('Недостаточно прав для выполнения операции.');
       }
       Card.deleteOne(card).then(() => {
-        res.send({ data: card });
+        res.json({ data: card });
       });
     })
     .catch(next);

@@ -6,7 +6,9 @@ const NotFoundError = require('../errors/NotFoundError');
 const ForbiddenError = require('../errors/ForbiddenError');
 
 const getUsers = (req, res, next) => {
-  User.find({}).select('-password').exec()
+  User.find({})
+    .select('-password')
+    .exec()
     .then((users) => res.json({ data: users }))
     .catch(next);
 };
@@ -18,7 +20,9 @@ const getUserById = (req, res, next) => {
     throw new ForbiddenError('У вас нет доступа к информации о данном пользователе');
   }
 
-  return User.findById(userId).select('-password').exec()
+  return User.findById(userId)
+    .select('-password')
+    .exec()
     .then((user) => {
       if (!user) {
         throw new NotFoundError('Пользователь с указанным ID не найден');
@@ -29,7 +33,9 @@ const getUserById = (req, res, next) => {
 };
 
 const getCurrentUser = (req, res, next) => {
-  User.findById(req.user._id).select('-password').exec()
+  User.findById(req.user._id)
+    .select('-password')
+    .exec()
     .then((user) => {
       if (!user) {
         throw new NotFoundError('Пользователь не найден');
@@ -42,7 +48,9 @@ const getCurrentUser = (req, res, next) => {
 const updateUser = (req, res, next) => {
   const { name, about } = req.body;
 
-  return User.findByIdAndUpdate(req.user._id, { name, about }, { new: true, runValidators: true }).select('-password').exec()
+  return User.findByIdAndUpdate(req.user._id, { name, about }, { new: true, runValidators: true })
+    .select('-password')
+    .exec()
     .then((user) => {
       const updatedUser = {
         _id: user._id,
@@ -63,7 +71,9 @@ const updateUser = (req, res, next) => {
 const updateAvatar = (req, res, next) => {
   const { avatar } = req.body;
 
-  return User.findByIdAndUpdate(req.user._id, { avatar }, { new: true, runValidators: true }).select('-password').exec()
+  return User.findByIdAndUpdate(req.user._id, { avatar }, { new: true, runValidators: true })
+    .select('-password')
+    .exec()
     .then((user) => res.json({ data: user }))
     .catch((err) => {
       if (err.name === 'ValidationError') {
@@ -92,14 +102,16 @@ const createUser = async (req, res, next) => {
 
     const token = jwt.sign({ _id: user._id }, 'your_jwt_secret', { expiresIn: '7d' });
 
-    return res.status(201).json({
-      _id: user._id,
-      email: user.email,
-      name: user.name,
-      about: user.about,
-      avatar: user.avatar,
-      token,
-    });
+    return res
+      .status(201)
+      .json({
+        _id: user._id,
+        email: user.email,
+        name: user.name,
+        about: user.about,
+        avatar: user.avatar,
+        token,
+      });
   } catch (err) {
     if (err.name === 'ValidationError') {
       return next(new BadRequestError('Ошибка валидации'));
