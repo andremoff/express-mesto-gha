@@ -4,7 +4,7 @@ const helmet = require('helmet');
 const session = require('express-session');
 const escapeHtml = require('escape-html');
 const rateLimit = require('express-rate-limit');
-const { celebrate, Joi } = require('celebrate');
+const { celebrate, Joi, errors } = require('celebrate');
 const { login, createUser } = require('./controllers/users');
 const usersRouter = require('./routes/users');
 const cardsRouter = require('./routes/cards');
@@ -64,6 +64,9 @@ app.post('/signin', celebrate({
 
 app.use('/users', auth, usersRouter);
 app.use('/cards', auth, cardsRouter);
+
+// Обработка ошибок celebrate/Joi
+app.use(errors());
 
 // Обработка несовпадающих маршрутов (404 ошибка)
 app.use((req, res, next) => {

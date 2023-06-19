@@ -101,6 +101,9 @@ const createUser = async (req, res, next) => {
       token,
     });
   } catch (err) {
+    if (err.name === 'ValidationError') {
+      return next(new BadRequestError('Ошибка валидации'));
+    }
     if (err.name === 'MongoError' && err.code === 11000) {
       return next(new BadRequestError('Пользователь с таким email уже существует'));
     }
