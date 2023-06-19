@@ -1,5 +1,6 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const Joi = require('joi');
 const User = require('../models/user');
 const BadRequestError = require('../errors/BadRequestError');
 const NotFoundError = require('../errors/NotFoundError');
@@ -92,6 +93,26 @@ const createUser = async (req, res, next) => {
   const hash = bcrypt.hashSync(password, salt);
 
   try {
+    const schema = Joi.object({
+      name: Joi.string().min(2).max(30),
+      about: Joi.string().min(2).max(30),
+      avatar: Joi.string().uri(),
+      email: Joi.string().email().required(),
+      password: Joi.string().min(6).required(),
+    });
+
+    const { error } = schema.validate({
+      name,
+      about,
+      avatar,
+      email,
+      password,
+    });
+
+    if (error) {
+      throw new BadRequestError('Ошибка валидации'); // Исправлено: Помечено как исправление
+    }
+
     const user = await User.create({
       name: name || 'Жак-Ив Кусто',
       about: about || 'Исследователь',
@@ -102,19 +123,17 @@ const createUser = async (req, res, next) => {
 
     const token = jwt.sign({ _id: user._id }, 'your_jwt_secret', { expiresIn: '7d' });
 
-    return res
-      .status(201)
-      .json({
-        _id: user._id,
-        email: user.email,
-        name: user.name,
-        about: user.about,
-        avatar: user.avatar,
-        token,
-      });
+    return res.status(201).json({
+      _id: user._id,
+      email: user.email,
+      name: user.name,
+      about: user.about,
+      avatar: user.avatar,
+      token,
+    });
   } catch (err) {
-    if (err.name === 'ValidationError') {
-      return next(new BadRequestError('Ошибка валидации'));
+    if (err instanceof BadRequestError) { // Исправлено: Помечено как исправление
+      return next(err);
     }
     if (err.name === 'MongoError' && err.code === 11000) {
       return next(new BadRequestError('Пользователь с таким email уже существует'));
