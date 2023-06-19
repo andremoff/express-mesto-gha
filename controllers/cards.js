@@ -1,6 +1,7 @@
 const { URL } = require('url');
-const mongoose = require('mongoose');
+const Joi = require('joi');
 const { ValidationError } = require('mongoose').Error;
+const mongoose = require('mongoose');
 const Card = require('../models/card');
 const BadRequestError = require('../errors/BadRequestError');
 const ForbiddenError = require('../errors/ForbiddenError');
@@ -17,19 +18,29 @@ const getCards = (req, res, next) => {
 const createCard = (req, res, next) => {
   const { name, link } = req.body;
 
-  if (!name || !link) {
-    return next(new BadRequestError('Поля name и link обязательны для заполнения'));
+  if (!name) {
+    return next(new BadRequestError('Поле name обязательно для заполнения'));
   }
 
-  if (name.length < 2 || name.length > 30) {
-    return next(new BadRequestError('Длина имени карточки должна быть от 2 до 30 символов'));
+  if (!link) {
+    return next(new BadRequestError('Поле link обязательно для заполнения'));
+  }
+
+  const schema = Joi.object({
+    name: Joi.string().min(2).max(30).required(),
+    link: Joi.string().uri().required(),
+  });
+
+  const { error } = schema.validate({ name, link });
+  if (error) {
+    return next(new BadRequestError('Ошибка валидации поля name или link'));
   }
 
   let isValidURL;
   try {
     const urlObj = new URL(link);
     isValidURL = urlObj.protocol && urlObj.host;
-  } catch (error) {
+  } catch (catchError) {
     isValidURL = false;
   }
 
@@ -44,8 +55,8 @@ const createCard = (req, res, next) => {
         _id, name, link, owner: req.user._id,
       });
     })
-    .catch((error) => {
-      if (error instanceof ValidationError) {
+    .catch((catchError) => {
+      if (catchError instanceof ValidationError) {
         return next(new BadRequestError('Ошибка валидации карточки'));
       }
       return next(new BadRequestError('Ошибка при создании карточки'));
@@ -57,7 +68,7 @@ const likeCard = (req, res, next) => {
   const { cardId } = req.params;
 
   if (!mongoose.Types.ObjectId.isValid(cardId)) {
-    throw new BadRequestError('Невалидный id карточки');
+    return next(new BadRequestError('Невалидный id карточки'));
   }
 
   return Card.findByIdAndUpdate(cardId, { $addToSet: { likes: req.user._id } }, { new: true })
@@ -75,12 +86,12 @@ const likeCard = (req, res, next) => {
     .catch(() => next(new BadRequestError('Ошибка при добавлении лайка карточке')));
 };
 
-// Удаления лайка с карточки
+// Удаление лайка с карточки
 const dislikeCard = (req, res, next) => {
   const { cardId } = req.params;
 
   if (!mongoose.Types.ObjectId.isValid(cardId)) {
-    throw new BadRequestError('Невалидный id карточки');
+    return next(new BadRequestError('Невалидный id карточки'));
   }
 
   return Card.findByIdAndUpdate(cardId, { $pull: { likes: req.user._id } }, { new: true })
@@ -95,15 +106,20 @@ const dislikeCard = (req, res, next) => {
         _id, name, link, owner, likes,
       });
     })
-    .catch(() => next(new BadRequestError('Ошибка при удалении лайка с карточки')));
+    .catch((error) => {
+      if (error instanceof NotFoundError) {
+        return next(new NotFoundError('Карточка не найдена'));
+      }
+      return next(new BadRequestError('Ошибка при удалении лайка с карточки'));
+    });
 };
 
-// Функция для удаления карточки
+// Удаление карточки
 const deleteCard = (req, res, next) => {
   const { cardId } = req.params;
 
   if (!mongoose.Types.ObjectId.isValid(cardId)) {
-    throw new BadRequestError('Невалидный id карточки');
+    return next(new BadRequestError('Невалидный id карточки'));
   }
 
   return Card.findById(cardId)
@@ -122,7 +138,17 @@ const deleteCard = (req, res, next) => {
         })
         .catch(() => next(new BadRequestError('Ошибка при удалении карточки')));
     })
-    .catch(() => next(new BadRequestError('Ошибка при поиске карточки')));
+    .catch((error) => {
+      if (error instanceof NotFoundError) {
+        return next(new NotFoundError('Карточка не найдена'));
+      }
+
+      if (error instanceof ForbiddenError) {
+        return next(new ForbiddenError('У вас нет прав на удаление этой карточки'));
+      }
+
+      return next(new BadRequestError('Ошибка при поиске карточки'));
+    });
 };
 
 module.exports = {

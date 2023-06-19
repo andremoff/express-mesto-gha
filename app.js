@@ -4,12 +4,13 @@ const helmet = require('helmet');
 const session = require('express-session');
 const escapeHtml = require('escape-html');
 const rateLimit = require('express-rate-limit');
-const { celebrate, Joi, errors } = require('celebrate');
+const { celebrate, Joi } = require('celebrate');
 const { login, createUser } = require('./controllers/users');
 const usersRouter = require('./routes/users');
 const cardsRouter = require('./routes/cards');
 const auth = require('./middlewares/auth');
 const handleError = require('./middlewares/handleError');
+const NotFoundError = require('./errors/NotFoundError');
 
 const app = express();
 const PORT = 3000;
@@ -39,9 +40,9 @@ app.post('/signup', celebrate({
   }),
 }), (req, res, next) => {
   req.body = {
-    name: escapeHtml(req.body.name || 'Жак-Ив Кусто'),
-    about: escapeHtml(req.body.about || 'Исследователь'),
-    avatar: escapeHtml(req.body.avatar || 'ссылка на картинку'),
+    name: escapeHtml(req.body.name),
+    about: escapeHtml(req.body.about),
+    avatar: escapeHtml(req.body.avatar),
     email: escapeHtml(req.body.email),
     password: escapeHtml(req.body.password),
   };
@@ -64,13 +65,13 @@ app.post('/signin', celebrate({
 app.use('/users', auth, usersRouter);
 app.use('/cards', auth, cardsRouter);
 
+// Обработка несовпадающих маршрутов (404 ошибка)
 app.use((req, res, next) => {
-  const err = new Error('Запрашиваемый ресурс не найден');
-  err.status = 404;
+  const err = new NotFoundError('Запрашиваемый ресурс не найден');
   next(err);
 });
 
-app.use(errors());
+// Обработчик ошибок
 app.use(handleError);
 
 mongoose.connect('mongodb://localhost:27017/mestodb', { useNewUrlParser: true });

@@ -1,10 +1,10 @@
-const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { Joi } = require('celebrate');
 const User = require('../models/user');
 const BadRequestError = require('../errors/BadRequestError');
 const NotFoundError = require('../errors/NotFoundError');
-const UnauthenticatedError = require('../errors/UnauthenticatedError');
+const ForbiddenError = require('../errors/ForbiddenError');
 
 // Функция для получения всех пользователей
 const getUsers = (req, res, next) => {
@@ -18,14 +18,18 @@ const getUsers = (req, res, next) => {
 const getUserById = (req, res, next) => {
   const { userId } = req.params;
 
-  if (!mongoose.Types.ObjectId.isValid(userId)) {
-    throw new BadRequestError('Некорректный ID пользователя');
+  if (userId !== req.user._id) {
+    throw new ForbiddenError('У вас нет доступа к информации о данном пользователе');
   }
 
   return User.findById(userId)
     .select('-password')
-    .orFail(() => next(new NotFoundError('Пользователь с указанным ID не найден')))
-    .then((user) => res.json({ data: user }))
+    .then((user) => {
+      if (user === null) {
+        throw new NotFoundError('Пользователь с указанным ID не найден');
+      }
+      return res.json({ data: user });
+    })
     .catch(next);
 };
 
@@ -42,9 +46,28 @@ const getCurrentUser = (req, res, next) => {
     .catch(next);
 };
 
+const schemaUpdateUser = Joi.object({
+  name: Joi.string().min(2).max(30).required(),
+  about: Joi.string().min(2).max(30).required(),
+});
+
+const schemaUpdateAvatar = Joi.object({
+  avatar: Joi.string().uri().required(),
+});
+
 // Функция для обновления информации о текущем пользователе
 const updateUser = (req, res, next) => {
   const { name, about } = req.body;
+
+  const schema = Joi.object({
+    name: Joi.string().min(2).max(30).required(),
+    about: Joi.string().min(2).max(30).required(),
+  });
+
+  const { error } = schema.validate({ name, about });
+  if (error) {
+    throw new BadRequestError('Ошибка валидации полей name и about');
+  }
 
   return User.findByIdAndUpdate(req.user._id, { name, about }, { new: true, runValidators: true })
     .select('-password')
@@ -64,6 +87,11 @@ const updateUser = (req, res, next) => {
 const updateAvatar = (req, res, next) => {
   const { avatar } = req.body;
 
+  const { error } = schemaUpdateAvatar.validate({ avatar });
+  if (error) {
+    throw new BadRequestError('Ошибка валидации поля avatar');
+  }
+
   return User.findByIdAndUpdate(req.user._id, { avatar }, { new: true, runValidators: true })
     .select('-password')
     .orFail(() => next(new NotFoundError('Пользователь не найден')))
@@ -74,9 +102,9 @@ const updateAvatar = (req, res, next) => {
 // Функция для создания нового пользователя
 const createUser = async (req, res, next) => {
   const {
-    name = 'Жак-Ив Кусто',
-    about = 'Исследователь',
-    avatar = 'ссылка на картинку',
+    name,
+    about,
+    avatar,
     email,
     password,
   } = req.body;
@@ -85,10 +113,15 @@ const createUser = async (req, res, next) => {
   const hash = bcrypt.hashSync(password, salt);
 
   try {
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      throw new BadRequestError('Пользователь с таким email уже существует');
+    }
+
     const user = await User.create({
-      name,
-      about,
-      avatar,
+      name: name || 'Жак-Ив Кусто',
+      about: about || 'Исследователь',
+      avatar: avatar || 'ссылка на картинку',
       email,
       password: hash,
     });
@@ -104,6 +137,9 @@ const createUser = async (req, res, next) => {
       token,
     });
   } catch (error) {
+    if (error.name === 'ValidationError') {
+      return next(new BadRequestError('Ошибка валидации пользователя'));
+    }
     return next(error);
   }
 };
@@ -115,12 +151,12 @@ const login = async (req, res, next) => {
   try {
     const user = await User.findOne({ email }).select('+password');
     if (!user) {
-      throw new UnauthenticatedError('Неправильные почта или пароль');
+      return res.status(401).json({ message: 'Неправильные почта или пароль' });
     }
 
     const isPasswordMatch = await bcrypt.compare(password, user.password);
     if (!isPasswordMatch) {
-      throw new UnauthenticatedError('Неправильные почта или пароль');
+      return res.status(401).json({ message: 'Неправильные почта или пароль' });
     }
 
     const token = jwt.sign({ _id: user._id }, 'your_jwt_secret', { expiresIn: '7d' });
