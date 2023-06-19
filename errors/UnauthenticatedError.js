@@ -1,6 +1,6 @@
 class UnauthenticatedError extends Error {
   constructor(message) {
-    super(message, 401);
+    super(message);
     this.statusCode = 401;
   }
 }
