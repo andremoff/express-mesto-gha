@@ -34,9 +34,9 @@ app.use(cookieParser());
 
 app.post('/signup', celebrate({
   body: Joi.object().keys({
-    name: Joi.string().min(2).max(30),
-    about: Joi.string().min(2).max(30),
-    avatar: Joi.string().uri(),
+    name: Joi.string().min(2).max(30).required(),
+    about: Joi.string().min(2).max(30).required(),
+    avatar: Joi.string().uri().allow(null),
     email: Joi.string().email().required(),
     password: Joi.string().min(6).required(),
   }),
@@ -79,6 +79,7 @@ app.use((req, res, next) => {
 // Обработчик ошибок
 app.use(handleError);
 
-mongoose.connect('mongodb://localhost:27017/mestodb', { useNewUrlParser: true });
-
-app.listen(PORT);
+mongoose.connect('mongodb://localhost:27017/mestodb', { useNewUrlParser: true })
+  .then(() => {
+    app.listen(PORT);
+  });

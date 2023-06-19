@@ -5,8 +5,8 @@ const mongoose = require('mongoose');
 const User = require('../models/user');
 const BadRequestError = require('../errors/BadRequestError');
 const NotFoundError = require('../errors/NotFoundError');
-const ForbiddenError = require('../errors/ForbiddenError');
 const UnauthenticatedError = require('../errors/UnauthenticatedError');
+const ConflictError = require('../errors/ConflictError');
 
 const getUsers = async (req, res, next) => {
   try {
@@ -24,17 +24,13 @@ const getUserById = (req, res, next) => {
     throw new BadRequestError('Неверный формат ID пользователя');
   }
 
-  if (userId !== req.user._id) {
-    throw new ForbiddenError('У вас нет доступа к информации о данном пользователе');
-  }
-
   return User.findById(userId)
     .select('-password')
     .then((user) => {
       if (!user) {
         throw new NotFoundError('Пользователь с указанным ID не найден');
       }
-      return res.json({ data: user });
+      return res.status(404).json({ message: 'Пользователь с указанным ID не найден' });
     })
     .catch(next);
 };
@@ -61,39 +57,67 @@ const updateUser = async (req, res, next) => {
       throw new NotFoundError('Пользователь не найден');
     }
 
+    const schema = Joi.object({
+      name: Joi.string().min(2).max(30),
+      about: Joi.string().min(2).max(30),
+    });
+
+    const { error } = schema.validate({
+      name,
+      about,
+    });
+
+    if (error) {
+      throw new BadRequestError('Ошибка валидации полей name и about');
+    }
+
     user.name = name;
     user.about = about;
 
     const updatedUser = await user.save();
 
-    res.status(200).json({
-      _id: updatedUser._id,
-      name: updatedUser.name,
-      about: updatedUser.about,
-    });
+    res.status(200).json(updatedUser);
   } catch (err) {
     if (err.name === 'ValidationError') {
-      next(new BadRequestError('Ошибка валидации полей name и about', err));
+      next(new BadRequestError('Ошибка валидации полей name и about'));
     } else {
       next(new BadRequestError('Ошибка при обновлении пользователя', err));
     }
   }
 };
 
-const updateAvatar = (req, res, next) => {
+const updateAvatar = async (req, res, next) => {
   const { avatar } = req.body;
 
-  return User.findByIdAndUpdate(req.user._id, { avatar }, { new: true, runValidators: true })
-    .select('-password')
-    .exec()
-    .then((user) => res.json({ data: user }))
-    .catch((err) => {
-      if (err.name === 'ValidationError') {
-        next(new BadRequestError('Ошибка валидации поля avatar', err));
-      } else {
-        next(new BadRequestError('Ошибка при обновлении аватара пользователя', err));
-      }
+  try {
+    const user = await User.findById(req.user._id).select('-password');
+
+    if (!user) {
+      throw new NotFoundError('Пользователь не найден');
+    }
+
+    const schema = Joi.object({
+      avatar: Joi.string().uri().trim().required(),
     });
+
+    const { error } = schema.validate({ avatar });
+
+    if (error) {
+      throw new BadRequestError('Ошибка валидации поля avatar');
+    }
+
+    user.avatar = avatar;
+
+    const updatedUser = await user.save();
+
+    res.status(200).json(updatedUser);
+  } catch (err) {
+    if (err.name === 'ValidationError') {
+      next(new BadRequestError('Ошибка валидации поля avatar'));
+    } else {
+      next(new BadRequestError('Ошибка при обновлении аватара пользователя', err));
+    }
+  }
 };
 
 const createUser = async (req, res, next) => {
@@ -106,9 +130,9 @@ const createUser = async (req, res, next) => {
     const hash = await bcrypt.hash(password, salt);
 
     const schema = Joi.object({
-      name: Joi.string().min(2).max(30),
-      about: Joi.string().min(2).max(30),
-      avatar: Joi.string().uri(),
+      name: Joi.string().min(2).max(30).required(),
+      about: Joi.string().min(2).max(30).required(),
+      avatar: Joi.string().uri().allow(null),
       email: Joi.string().email().required(),
       password: Joi.string().min(6).required(),
     });
@@ -125,10 +149,14 @@ const createUser = async (req, res, next) => {
       throw new BadRequestError('Ошибка валидации', error);
     }
 
+    const defaultName = 'Жак-Ив Кусто';
+    const defaultAbout = 'Исследователь';
+    const defaultAvatar = null;
+
     const user = await User.create({
-      name: name || 'Жак-Ив Кусто',
-      about: about || 'Исследователь',
-      avatar: avatar || 'ссылка на картинку',
+      name: name || defaultName,
+      about: about || defaultAbout,
+      avatar: avatar || defaultAvatar,
       email,
       password: hash,
     });
@@ -144,6 +172,9 @@ const createUser = async (req, res, next) => {
     // Сохраняем токен в базе данных или на сервере
     return res.status(201).json({
       _id: user._id,
+      name: user.name,
+      about: user.about,
+      avatar: user.avatar,
       email: user.email,
       token,
     });
@@ -152,7 +183,7 @@ const createUser = async (req, res, next) => {
       return next(err);
     }
     if (err.name === 'MongoError' && err.code === 11000) {
-      return next(new BadRequestError('Пользователь с таким email уже существует'));
+      return next(new ConflictError('Пользователь с таким email уже существует'));
     }
     return next(new BadRequestError('Ошибка при создании пользователя', err));
   }
@@ -164,7 +195,7 @@ const login = async (req, res, next) => {
   try {
     const user = await User.findOne({ email }).select('+password');
     if (!user) {
-      return next(new BadRequestError('Неправильные почта или пароль'));
+      return next(new UnauthenticatedError('Неправильные почта или пароль'));
     }
 
     const isPasswordMatch = await bcrypt.compare(password, user.password);

@@ -8,7 +8,7 @@ const ConflictError = require('../errors/ConflictError');
 const getCards = (req, res, next) => {
   Card.find({})
     .then((cards) => {
-      if (!cards) {
+      if (!cards || cards.length === 0) {
         throw new NotFoundError('Карточки не найдены');
       }
       res.json({ data: cards });
@@ -24,17 +24,16 @@ const createCard = (req, res, next) => {
   const schema = Joi.object({
     name: Joi.string().min(2).max(30).required(),
     link: Joi.string().uri().required(),
-    owner: Joi.string().required(),
   });
 
-  const { error } = schema.validate({ name, link, owner });
+  const { error } = schema.validate({ name, link });
   if (error) {
     return next(new BadRequestError('При создании карточки переданы некорректные данные.', error));
   }
 
   return Card.create({ name, link, owner })
     .then((card) => {
-      res.status(201).json({ card: card.toObject() });
+      res.status(201).json({ card });
     })
     .catch((err) => {
       if (err.code === 11000) {
