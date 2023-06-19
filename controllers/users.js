@@ -6,6 +6,7 @@ const User = require('../models/user');
 const BadRequestError = require('../errors/BadRequestError');
 const NotFoundError = require('../errors/NotFoundError');
 const ForbiddenError = require('../errors/ForbiddenError');
+const UnauthenticatedError = require('../errors/UnauthenticatedError');
 
 const getUsers = async (req, res, next) => {
   try {
@@ -72,9 +73,9 @@ const updateUser = async (req, res, next) => {
     });
   } catch (err) {
     if (err.name === 'ValidationError') {
-      next(new BadRequestError('Ошибка валидации полей name и about'));
+      next(new BadRequestError('Ошибка валидации полей name и about', err));
     } else {
-      next(new BadRequestError('Ошибка при обновлении пользователя'));
+      next(new BadRequestError('Ошибка при обновлении пользователя', err));
     }
   }
 };
@@ -88,9 +89,9 @@ const updateAvatar = (req, res, next) => {
     .then((user) => res.json({ data: user }))
     .catch((err) => {
       if (err.name === 'ValidationError') {
-        next(new BadRequestError('Ошибка валидации поля avatar'));
+        next(new BadRequestError('Ошибка валидации поля avatar', err));
       } else {
-        next(new BadRequestError('Ошибка при обновлении аватара пользователя'));
+        next(new BadRequestError('Ошибка при обновлении аватара пользователя', err));
       }
     });
 };
@@ -121,7 +122,7 @@ const createUser = async (req, res, next) => {
     });
 
     if (error) {
-      throw new BadRequestError('Ошибка валидации');
+      throw new BadRequestError('Ошибка валидации', error);
     }
 
     const user = await User.create({
@@ -153,7 +154,7 @@ const createUser = async (req, res, next) => {
     if (err.name === 'MongoError' && err.code === 11000) {
       return next(new BadRequestError('Пользователь с таким email уже существует'));
     }
-    return next(new BadRequestError('Ошибка при создании пользователя'));
+    return next(new BadRequestError('Ошибка при создании пользователя', err));
   }
 };
 
@@ -168,7 +169,7 @@ const login = async (req, res, next) => {
 
     const isPasswordMatch = await bcrypt.compare(password, user.password);
     if (!isPasswordMatch) {
-      return next(new BadRequestError('Неправильные почта или пароль'));
+      return next(new UnauthenticatedError('Неправильные почта или пароль'));
     }
 
     const token = jwt.sign({ _id: user._id }, 'your_jwt_secret', { expiresIn: '7d' });

@@ -1,8 +1,8 @@
 const Joi = require('joi');
 const Card = require('../models/card');
 const BadRequestError = require('../errors/BadRequestError');
-const ForbiddenError = require('../errors/ForbiddenError');
 const NotFoundError = require('../errors/NotFoundError');
+const ConflictError = require('../errors/ConflictError');
 
 // Получение всех карточек
 const getCards = (req, res, next) => {
@@ -29,14 +29,20 @@ const createCard = (req, res, next) => {
 
   const { error } = schema.validate({ name, link, owner });
   if (error) {
-    return next(new BadRequestError('При создании карточки переданы некорректные данные.'));
+    return next(new BadRequestError('При создании карточки переданы некорректные данные.', error));
   }
 
   return Card.create({ name, link, owner })
     .then((card) => {
-      res.json({ card });
+      res.status(201).json({ card: card.toObject() });
     })
-    .catch(next);
+    .catch((err) => {
+      if (err.code === 11000) {
+        next(new ConflictError('Карточка с такими данными уже существует'));
+      } else {
+        next(err);
+      }
+    });
 };
 
 // Добавление лайка карточке
@@ -79,16 +85,11 @@ const dislikeCard = (req, res, next) => {
 
 // Удаление карточки
 const deleteCard = (req, res, next) => {
-  Card.findById(req.params.cardId)
+  Card.findByIdAndRemove(req.params.cardId)
     .then((card) => {
       if (!card) {
         throw new NotFoundError('Карточка с указанным id не найдена.');
-      } else if (card.owner.toString() !== req.user._id) {
-        throw new ForbiddenError('Недостаточно прав для выполнения операции.');
       }
-      return card.remove();
-    })
-    .then((card) => {
       res.json({ card });
     })
     .catch(next);
