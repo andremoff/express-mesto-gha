@@ -4,6 +4,7 @@ const helmet = require('helmet');
 const session = require('express-session');
 const escapeHtml = require('escape-html');
 const rateLimit = require('express-rate-limit');
+const cookieParser = require('cookie-parser');
 const { celebrate, Joi, errors } = require('celebrate');
 const { login, createUser } = require('./controllers/users');
 const usersRouter = require('./routes/users');
@@ -29,6 +30,7 @@ app.use(session({
   cookie: { secure: true },
 }));
 app.use(express.json());
+app.use(cookieParser());
 
 app.post('/signup', celebrate({
   body: Joi.object().keys({

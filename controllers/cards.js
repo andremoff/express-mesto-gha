@@ -50,6 +50,9 @@ const likeCard = (req, res, next) => {
       if (!card) {
         throw new NotFoundError('Карточка с указанным id не найдена.');
       }
+      return card;
+    })
+    .then((card) => {
       res.json({ data: card });
     })
     .catch(next);
@@ -66,6 +69,9 @@ const dislikeCard = (req, res, next) => {
       if (!card) {
         throw new NotFoundError('Карточка с указанным id не найдена.');
       }
+      return card;
+    })
+    .then((card) => {
       res.json({ data: card });
     })
     .catch(next);
@@ -80,9 +86,10 @@ const deleteCard = (req, res, next) => {
       } else if (card.owner.toString() !== req.user._id) {
         throw new ForbiddenError('Недостаточно прав для выполнения операции.');
       }
-      Card.deleteOne(card).then(() => {
-        res.json({ data: card });
-      });
+      return Card.deleteOne(card);
+    })
+    .then((card) => {
+      res.json({ data: card });
     })
     .catch(next);
 };

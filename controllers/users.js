@@ -6,12 +6,13 @@ const BadRequestError = require('../errors/BadRequestError');
 const NotFoundError = require('../errors/NotFoundError');
 const ForbiddenError = require('../errors/ForbiddenError');
 
-const getUsers = (req, res, next) => {
-  User.find({})
-    .select('-password')
-    .exec()
-    .then((users) => res.json({ data: users }))
-    .catch(next);
+const getUsers = async (req, res, next) => {
+  try {
+    const users = await User.find({}).select('-password');
+    res.json({ data: users });
+  } catch (err) {
+    next(err);
+  }
 };
 
 const getUserById = (req, res, next) => {
@@ -123,12 +124,10 @@ const createUser = async (req, res, next) => {
 
     const token = jwt.sign({ _id: user._id }, 'your_jwt_secret', { expiresIn: '7d' });
 
+    // Сохраняем токен в базе данных или на сервере
     return res.status(201).json({
       _id: user._id,
       email: user.email,
-      name: user.name,
-      about: user.about,
-      avatar: user.avatar,
       token,
     });
   } catch (err) {
@@ -146,14 +145,14 @@ const login = async (req, res, next) => {
   const { email, password } = req.body;
 
   try {
-    const user = await User.findOne({ email }).select('+password').exec();
+    const user = await User.findOne({ email }).select('+password');
     if (!user) {
-      return res.status(401).json({ message: 'Неправильные почта или пароль' });
+      return next(new BadRequestError('Неправильные почта или пароль'));
     }
 
     const isPasswordMatch = await bcrypt.compare(password, user.password);
     if (!isPasswordMatch) {
-      return res.status(401).json({ message: 'Неправильные почта или пароль' });
+      return next(new BadRequestError('Неправильные почта или пароль'));
     }
 
     const token = jwt.sign({ _id: user._id }, 'your_jwt_secret', { expiresIn: '7d' });
