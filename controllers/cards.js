@@ -34,7 +34,7 @@ const createCard = (req, res, next) => {
 
   return Card.create({ name, link, owner })
     .then((card) => {
-      res.json({ data: card });
+      res.json({ card });
     })
     .catch(next);
 };
@@ -53,7 +53,7 @@ const likeCard = (req, res, next) => {
       return card;
     })
     .then((card) => {
-      res.json({ data: card });
+      res.json({ card });
     })
     .catch(next);
 };
@@ -72,7 +72,7 @@ const dislikeCard = (req, res, next) => {
       return card;
     })
     .then((card) => {
-      res.json({ data: card });
+      res.json({ card });
     })
     .catch(next);
 };
@@ -86,10 +86,10 @@ const deleteCard = (req, res, next) => {
       } else if (card.owner.toString() !== req.user._id) {
         throw new ForbiddenError('Недостаточно прав для выполнения операции.');
       }
-      return Card.deleteOne(card);
+      return card.remove();
     })
     .then((card) => {
-      res.json({ data: card });
+      res.json({ card });
     })
     .catch(next);
 };

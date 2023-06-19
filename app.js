@@ -46,7 +46,7 @@ app.post('/signup', celebrate({
     about: escapeHtml(req.body.about),
     avatar: escapeHtml(req.body.avatar),
     email: escapeHtml(req.body.email),
-    password: escapeHtml(req.body.password),
+    password: req.body.password,
   };
   next();
 }, createUser);
@@ -59,7 +59,7 @@ app.post('/signin', celebrate({
 }), (req, res, next) => {
   req.body = {
     email: escapeHtml(req.body.email),
-    password: escapeHtml(req.body.password),
+    password: req.body.password,
   };
   next();
 }, login);

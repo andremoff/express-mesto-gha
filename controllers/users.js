@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const Joi = require('joi');
+const mongoose = require('mongoose');
 const User = require('../models/user');
 const BadRequestError = require('../errors/BadRequestError');
 const NotFoundError = require('../errors/NotFoundError');
@@ -18,13 +19,16 @@ const getUsers = async (req, res, next) => {
 const getUserById = (req, res, next) => {
   const { userId } = req.params;
 
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    throw new BadRequestError('Неверный формат ID пользователя');
+  }
+
   if (userId !== req.user._id) {
     throw new ForbiddenError('У вас нет доступа к информации о данном пользователе');
   }
 
   return User.findById(userId)
     .select('-password')
-    .exec()
     .then((user) => {
       if (!user) {
         throw new NotFoundError('Пользователь с указанным ID не найден');
@@ -37,7 +41,6 @@ const getUserById = (req, res, next) => {
 const getCurrentUser = (req, res, next) => {
   User.findById(req.user._id)
     .select('-password')
-    .exec()
     .then((user) => {
       if (!user) {
         throw new NotFoundError('Пользователь не найден');
@@ -47,27 +50,33 @@ const getCurrentUser = (req, res, next) => {
     .catch(next);
 };
 
-const updateUser = (req, res, next) => {
+const updateUser = async (req, res, next) => {
   const { name, about } = req.body;
 
-  return User.findByIdAndUpdate(req.user._id, { name, about }, { new: true, runValidators: true })
-    .select('-password')
-    .exec()
-    .then((user) => {
-      const updatedUser = {
-        _id: user._id,
-        name: user.name,
-        about: user.about,
-      };
-      return res.status(200).json(updatedUser);
-    })
-    .catch((err) => {
-      if (err.name === 'ValidationError') {
-        next(new BadRequestError('Ошибка валидации полей name и about'));
-      } else {
-        next(new BadRequestError('Ошибка при обновлении пользователя'));
-      }
+  try {
+    const user = await User.findById(req.user._id).select('-password');
+
+    if (!user) {
+      throw new NotFoundError('Пользователь не найден');
+    }
+
+    user.name = name;
+    user.about = about;
+
+    const updatedUser = await user.save();
+
+    res.status(200).json({
+      _id: updatedUser._id,
+      name: updatedUser.name,
+      about: updatedUser.about,
     });
+  } catch (err) {
+    if (err.name === 'ValidationError') {
+      next(new BadRequestError('Ошибка валидации полей name и about'));
+    } else {
+      next(new BadRequestError('Ошибка при обновлении пользователя'));
+    }
+  }
 };
 
 const updateAvatar = (req, res, next) => {
@@ -90,10 +99,11 @@ const createUser = async (req, res, next) => {
   const {
     name, about, avatar, email, password,
   } = req.body;
-  const salt = bcrypt.genSaltSync(10);
-  const hash = bcrypt.hashSync(password, salt);
 
   try {
+    const salt = await bcrypt.genSalt(10);
+    const hash = await bcrypt.hash(password, salt);
+
     const schema = Joi.object({
       name: Joi.string().min(2).max(30),
       about: Joi.string().min(2).max(30),
@@ -122,7 +132,13 @@ const createUser = async (req, res, next) => {
       password: hash,
     });
 
-    const token = jwt.sign({ _id: user._id }, 'your_jwt_secret', { expiresIn: '7d' });
+    let token;
+
+    try {
+      token = jwt.sign({ _id: user._id }, 'your_jwt_secret', { expiresIn: '7d' });
+    } catch (err) {
+      throw new Error('Ошибка при генерации токена');
+    }
 
     // Сохраняем токен в базе данных или на сервере
     return res.status(201).json({
