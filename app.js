@@ -31,17 +31,17 @@ app.use(express.json());
 
 app.post('/signup', celebrate({
   body: Joi.object().keys({
-    name: Joi.string().min(2).max(30).required(),
-    about: Joi.string().min(2).max(30).required(),
-    avatar: Joi.string().uri().required(),
+    name: Joi.string().min(2).max(30),
+    about: Joi.string().min(2).max(30),
+    avatar: Joi.string().uri(),
     email: Joi.string().email().required(),
     password: Joi.string().min(6).required(),
   }),
 }), (req, res, next) => {
   req.body = {
-    name: escapeHtml(req.body.name),
-    about: escapeHtml(req.body.about),
-    avatar: escapeHtml(req.body.avatar),
+    name: escapeHtml(req.body.name || 'Жак-Ив Кусто'),
+    about: escapeHtml(req.body.about || 'Исследователь'),
+    avatar: escapeHtml(req.body.avatar || 'ссылка на картинку'),
     email: escapeHtml(req.body.email),
     password: escapeHtml(req.body.password),
   };
@@ -64,14 +64,13 @@ app.post('/signin', celebrate({
 app.use('/users', auth, usersRouter);
 app.use('/cards', auth, cardsRouter);
 
-app.use(errors());
-
 app.use((req, res, next) => {
   const err = new Error('Запрашиваемый ресурс не найден');
   err.status = 404;
   next(err);
 });
 
+app.use(errors());
 app.use(handleError);
 
 mongoose.connect('mongodb://localhost:27017/mestodb', { useNewUrlParser: true });

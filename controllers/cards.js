@@ -2,16 +2,15 @@ const { URL } = require('url');
 const mongoose = require('mongoose');
 const { ValidationError } = require('mongoose').Error;
 const Card = require('../models/card');
-const BadRequest = require('../middlewares/handleError');
-const NotFound = require('../middlewares/handleError');
-const Forbidden = require('../middlewares/handleError');
-const InternalServerError = require('../middlewares/handleError');
+const BadRequestError = require('../errors/BadRequestError');
+const ForbiddenError = require('../errors/ForbiddenError');
+const NotFoundError = require('../errors/NotFoundError');
 
 // Получения всех карточек
 const getCards = (req, res, next) => {
   Card.find()
     .then((cards) => res.json(cards))
-    .catch(() => next(new InternalServerError('Ошибка при получении списка карточек')));
+    .catch(() => next(new BadRequestError('Ошибка при получении списка карточек')));
 };
 
 // Создания новой карточки
@@ -19,11 +18,11 @@ const createCard = (req, res, next) => {
   const { name, link } = req.body;
 
   if (!name || !link) {
-    return next(new BadRequest('Поля name и link обязательны для заполнения'));
+    return next(new BadRequestError('Поля name и link обязательны для заполнения'));
   }
 
   if (name.length < 2 || name.length > 30) {
-    return next(new BadRequest('Длина имени карточки должна быть от 2 до 30 символов'));
+    return next(new BadRequestError('Длина имени карточки должна быть от 2 до 30 символов'));
   }
 
   let isValidURL;
@@ -35,7 +34,7 @@ const createCard = (req, res, next) => {
   }
 
   if (!isValidURL) {
-    return next(new BadRequest('Поле link должно быть валидным URL'));
+    return next(new BadRequestError('Поле link должно быть валидным URL'));
   }
 
   return Card.create({ name, link, owner: req.user._id })
@@ -47,9 +46,9 @@ const createCard = (req, res, next) => {
     })
     .catch((error) => {
       if (error instanceof ValidationError) {
-        return next(new BadRequest('Ошибка валидации карточки'));
+        return next(new BadRequestError('Ошибка валидации карточки'));
       }
-      return next(new InternalServerError('Ошибка при создании карточки'));
+      return next(new BadRequestError('Ошибка при создании карточки'));
     });
 };
 
@@ -58,13 +57,13 @@ const likeCard = (req, res, next) => {
   const { cardId } = req.params;
 
   if (!mongoose.Types.ObjectId.isValid(cardId)) {
-    throw new BadRequest('Невалидный id карточки');
+    throw new BadRequestError('Невалидный id карточки');
   }
 
   return Card.findByIdAndUpdate(cardId, { $addToSet: { likes: req.user._id } }, { new: true })
     .then((card) => {
       if (!card) {
-        throw new NotFound('Карточка не найдена');
+        throw new NotFoundError('Карточка не найдена');
       }
       const {
         _id, name, link, owner, likes,
@@ -73,7 +72,7 @@ const likeCard = (req, res, next) => {
         _id, name, link, owner, likes,
       });
     })
-    .catch(() => next(new InternalServerError('Ошибка при добавлении лайка карточке')));
+    .catch(() => next(new BadRequestError('Ошибка при добавлении лайка карточке')));
 };
 
 // Удаления лайка с карточки
@@ -81,13 +80,13 @@ const dislikeCard = (req, res, next) => {
   const { cardId } = req.params;
 
   if (!mongoose.Types.ObjectId.isValid(cardId)) {
-    throw new BadRequest('Невалидный id карточки');
+    throw new BadRequestError('Невалидный id карточки');
   }
 
   return Card.findByIdAndUpdate(cardId, { $pull: { likes: req.user._id } }, { new: true })
     .then((card) => {
       if (!card) {
-        throw new NotFound('Карточка не найдена');
+        throw new NotFoundError('Карточка не найдена');
       }
       const {
         _id, name, link, owner, likes,
@@ -96,7 +95,7 @@ const dislikeCard = (req, res, next) => {
         _id, name, link, owner, likes,
       });
     })
-    .catch(() => next(new InternalServerError('Ошибка при удалении лайка с карточки')));
+    .catch(() => next(new BadRequestError('Ошибка при удалении лайка с карточки')));
 };
 
 // Функция для удаления карточки
@@ -104,26 +103,26 @@ const deleteCard = (req, res, next) => {
   const { cardId } = req.params;
 
   if (!mongoose.Types.ObjectId.isValid(cardId)) {
-    throw new BadRequest('Невалидный id карточки');
+    throw new BadRequestError('Невалидный id карточки');
   }
 
   return Card.findById(cardId)
     .then((card) => {
       if (!card) {
-        throw new NotFound('Карточка не найдена');
+        throw new NotFoundError('Карточка не найдена');
       }
 
       if (card.owner.toString() !== req.user._id) {
-        throw new Forbidden('У вас нет прав на удаление этой карточки');
+        throw new ForbiddenError('У вас нет прав на удаление этой карточки');
       }
 
       return Card.findByIdAndRemove(cardId)
         .then((deletedCard) => {
           res.status(200).json({ message: 'Карточка успешно удалена', data: deletedCard });
         })
-        .catch(() => next(new InternalServerError('Ошибка при удалении карточки')));
+        .catch(() => next(new BadRequestError('Ошибка при удалении карточки')));
     })
-    .catch(() => next(new InternalServerError('Ошибка при поиске карточки')));
+    .catch(() => next(new BadRequestError('Ошибка при поиске карточки')));
 };
 
 module.exports = {

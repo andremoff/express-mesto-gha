@@ -2,17 +2,16 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/user');
-const BadRequest = require('../middlewares/handleError');
-const NotFound = require('../middlewares/handleError');
-const Unauthorized = require('../middlewares/handleError');
-const InternalServerError = require('../middlewares/handleError');
+const BadRequestError = require('../errors/BadRequestError');
+const NotFoundError = require('../errors/NotFoundError');
+const UnauthenticatedError = require('../errors/UnauthenticatedError');
 
 // Функция для получения всех пользователей
 const getUsers = (req, res, next) => {
   User.find({})
     .select('-password')
     .then((users) => res.json({ data: users }))
-    .catch(() => next(new InternalServerError('Ошибка на сервере при получении списка пользователей')));
+    .catch(next);
 };
 
 // Функция для получения информации о конкретном пользователе
@@ -20,12 +19,12 @@ const getUserById = (req, res, next) => {
   const { userId } = req.params;
 
   if (!mongoose.Types.ObjectId.isValid(userId)) {
-    throw new BadRequest('Некорректный ID пользователя');
+    throw new BadRequestError('Некорректный ID пользователя');
   }
 
   return User.findById(userId)
     .select('-password')
-    .orFail(new NotFound('Пользователь с указанным ID не найден'))
+    .orFail(() => next(new NotFoundError('Пользователь с указанным ID не найден')))
     .then((user) => res.json({ data: user }))
     .catch(next);
 };
@@ -36,11 +35,11 @@ const getCurrentUser = (req, res, next) => {
     .select('-password')
     .then((user) => {
       if (!user) {
-        throw new NotFound('Пользователь не найден');
+        throw new NotFoundError('Пользователь не найден');
       }
       return res.json({ data: user });
     })
-    .catch(() => next(new InternalServerError('Ошибка на сервере при получении информации о текущем пользователе')));
+    .catch(next);
 };
 
 // Функция для обновления информации о текущем пользователе
@@ -49,7 +48,7 @@ const updateUser = (req, res, next) => {
 
   return User.findByIdAndUpdate(req.user._id, { name, about }, { new: true, runValidators: true })
     .select('-password')
-    .orFail(new NotFound('Пользователь не найден'))
+    .orFail(() => next(new NotFoundError('Пользователь не найден')))
     .then((user) => {
       const updatedUser = {
         _id: user._id,
@@ -67,7 +66,7 @@ const updateAvatar = (req, res, next) => {
 
   return User.findByIdAndUpdate(req.user._id, { avatar }, { new: true, runValidators: true })
     .select('-password')
-    .orFail(new NotFound('Пользователь не найден'))
+    .orFail(() => next(new NotFoundError('Пользователь не найден')))
     .then((user) => res.json({ data: user }))
     .catch(next);
 };
@@ -116,12 +115,12 @@ const login = async (req, res, next) => {
   try {
     const user = await User.findOne({ email }).select('+password');
     if (!user) {
-      throw new Unauthorized('Неправильные почта или пароль');
+      throw new UnauthenticatedError('Неправильные почта или пароль');
     }
 
     const isPasswordMatch = await bcrypt.compare(password, user.password);
     if (!isPasswordMatch) {
-      throw new Unauthorized('Неправильные почта или пароль');
+      throw new UnauthenticatedError('Неправильные почта или пароль');
     }
 
     const token = jwt.sign({ _id: user._id }, 'your_jwt_secret', { expiresIn: '7d' });
