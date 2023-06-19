@@ -1,20 +1,16 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { Joi } = require('celebrate');
 const User = require('../models/user');
 const BadRequestError = require('../errors/BadRequestError');
 const NotFoundError = require('../errors/NotFoundError');
 const ForbiddenError = require('../errors/ForbiddenError');
 
-// Функция для получения всех пользователей
 const getUsers = (req, res, next) => {
-  User.find({})
-    .select('-password')
+  User.find({}).select('-password').exec()
     .then((users) => res.json({ data: users }))
     .catch(next);
 };
 
-// Функция для получения информации о конкретном пользователе
 const getUserById = (req, res, next) => {
   const { userId } = req.params;
 
@@ -22,10 +18,9 @@ const getUserById = (req, res, next) => {
     throw new ForbiddenError('У вас нет доступа к информации о данном пользователе');
   }
 
-  return User.findById(userId)
-    .select('-password')
+  return User.findById(userId).select('-password').exec()
     .then((user) => {
-      if (user === null) {
+      if (!user) {
         throw new NotFoundError('Пользователь с указанным ID не найден');
       }
       return res.json({ data: user });
@@ -33,10 +28,8 @@ const getUserById = (req, res, next) => {
     .catch(next);
 };
 
-// Функция для получения информации о текущем авторизованном пользователе
 const getCurrentUser = (req, res, next) => {
-  User.findById(req.user._id)
-    .select('-password')
+  User.findById(req.user._id).select('-password').exec()
     .then((user) => {
       if (!user) {
         throw new NotFoundError('Пользователь не найден');
@@ -46,32 +39,10 @@ const getCurrentUser = (req, res, next) => {
     .catch(next);
 };
 
-const schemaUpdateUser = Joi.object({
-  name: Joi.string().min(2).max(30).required(),
-  about: Joi.string().min(2).max(30).required(),
-});
-
-const schemaUpdateAvatar = Joi.object({
-  avatar: Joi.string().uri().required(),
-});
-
-// Функция для обновления информации о текущем пользователе
 const updateUser = (req, res, next) => {
   const { name, about } = req.body;
 
-  const schema = Joi.object({
-    name: Joi.string().min(2).max(30).required(),
-    about: Joi.string().min(2).max(30).required(),
-  });
-
-  const { error } = schema.validate({ name, about });
-  if (error) {
-    throw new BadRequestError('Ошибка валидации полей name и about');
-  }
-
-  return User.findByIdAndUpdate(req.user._id, { name, about }, { new: true, runValidators: true })
-    .select('-password')
-    .orFail(() => next(new NotFoundError('Пользователь не найден')))
+  return User.findByIdAndUpdate(req.user._id, { name, about }, { new: true, runValidators: true }).select('-password').exec()
     .then((user) => {
       const updatedUser = {
         _id: user._id,
@@ -80,44 +51,37 @@ const updateUser = (req, res, next) => {
       };
       return res.status(200).json(updatedUser);
     })
-    .catch(next);
+    .catch((err) => {
+      if (err.name === 'ValidationError') {
+        next(new BadRequestError('Ошибка валидации полей name и about'));
+      } else {
+        next(new BadRequestError('Ошибка при обновлении пользователя'));
+      }
+    });
 };
 
-// Функция для обновления аватара текущего пользователя
 const updateAvatar = (req, res, next) => {
   const { avatar } = req.body;
 
-  const { error } = schemaUpdateAvatar.validate({ avatar });
-  if (error) {
-    throw new BadRequestError('Ошибка валидации поля avatar');
-  }
-
-  return User.findByIdAndUpdate(req.user._id, { avatar }, { new: true, runValidators: true })
-    .select('-password')
-    .orFail(() => next(new NotFoundError('Пользователь не найден')))
+  return User.findByIdAndUpdate(req.user._id, { avatar }, { new: true, runValidators: true }).select('-password').exec()
     .then((user) => res.json({ data: user }))
-    .catch(next);
+    .catch((err) => {
+      if (err.name === 'ValidationError') {
+        next(new BadRequestError('Ошибка валидации поля avatar'));
+      } else {
+        next(new BadRequestError('Ошибка при обновлении аватара пользователя'));
+      }
+    });
 };
 
-// Функция для создания нового пользователя
 const createUser = async (req, res, next) => {
   const {
-    name,
-    about,
-    avatar,
-    email,
-    password,
+    name, about, avatar, email, password,
   } = req.body;
-
   const salt = bcrypt.genSaltSync(10);
   const hash = bcrypt.hashSync(password, salt);
 
   try {
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      throw new BadRequestError('Пользователь с таким email уже существует');
-    }
-
     const user = await User.create({
       name: name || 'Жак-Ив Кусто',
       about: about || 'Исследователь',
@@ -136,20 +100,19 @@ const createUser = async (req, res, next) => {
       avatar: user.avatar,
       token,
     });
-  } catch (error) {
-    if (error.name === 'ValidationError') {
-      return next(new BadRequestError('Ошибка валидации пользователя'));
+  } catch (err) {
+    if (err.name === 'MongoError' && err.code === 11000) {
+      return next(new BadRequestError('Пользователь с таким email уже существует'));
     }
-    return next(error);
+    return next(new BadRequestError('Ошибка при создании пользователя'));
   }
 };
 
-// Функция для авторизации пользователя
 const login = async (req, res, next) => {
   const { email, password } = req.body;
 
   try {
-    const user = await User.findOne({ email }).select('+password');
+    const user = await User.findOne({ email }).select('+password').exec();
     if (!user) {
       return res.status(401).json({ message: 'Неправильные почта или пароль' });
     }
