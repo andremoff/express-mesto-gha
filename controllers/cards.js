@@ -8,9 +8,6 @@ const ForbiddenError = require('../errors/ForbiddenError');
 const getCards = async (req, res, next) => {
   try {
     const cards = await Card.find({});
-    if (!cards || cards.length === 0) {
-      throw new NotFoundError('Карточки не найдены');
-    }
     res.json({ data: cards });
   } catch (err) {
     next(err);
