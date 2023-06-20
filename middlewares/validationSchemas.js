@@ -16,7 +16,7 @@ const cardIdSchema = Joi.object().keys({
 
 const cardInfoSchema = Joi.object().keys({
   name: Joi.string().required().min(2).max(30),
-  link: Joi.string().required().uri(),
+  link: Joi.string().required().regex(/^https?:\/\/[a-z0-9\-._~:/?#[\]@!$&'()*+,;=]+$/i),
 });
 
 const userSchema = Joi.object().keys({
@@ -33,7 +33,7 @@ const updateUserSchema = Joi.object().keys({
 });
 
 const updateAvatarSchema = Joi.object().keys({
-  avatar: Joi.string().uri(),
+  avatar: Joi.string().uri().pattern(/^https?:\/\/[a-z0-9\-._~:/?#[\]@!$&'()*+,;=]+$/i),
 });
 
 const userIdSchema = Joi.object().keys({

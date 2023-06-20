@@ -111,7 +111,11 @@ const createUser = async (req, res, next) => {
       token,
     });
   } catch (err) {
-    next(new BadRequestError('Ошибка при создании пользователя', err));
+    if (err instanceof ConflictError) {
+      next(err);
+    } else {
+      next(new BadRequestError('Ошибка при создании пользователя', err));
+    }
   }
 };
 

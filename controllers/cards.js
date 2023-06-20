@@ -22,10 +22,6 @@ const createCard = (req, res, next) => {
   const { name, link } = req.body;
   const owner = req.user._id;
 
-  if (!name || !link) {
-    throw new BadRequestError('Необходимо указать название и ссылку карточки');
-  }
-
   return Card.create({ name, link, owner })
     .then((card) => {
       res.status(201).json({ data: card });
