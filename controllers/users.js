@@ -135,29 +135,37 @@ const updateAvatar = async (req, res, next) => {
 // Создание нового пользователя
 const createUser = async (req, res, next) => {
   const {
-    name = 'Жак-Ив Кусто',
-    about = 'Исследователь',
-    avatar = 'ссылка',
+    name,
+    about,
+    avatar,
     email,
     password,
   } = req.body;
+
+  const defaultName = 'Жак-Ив Кусто';
+  const defaultAbout = 'Исследователь';
+  const defaultAvatar = 'ссылка';
+
+  const processedName = name || defaultName;
+  const processedAbout = about || defaultAbout;
+  const processedAvatar = avatar || defaultAvatar;
 
   try {
     const salt = await bcrypt.genSalt(10);
     const hash = await bcrypt.hash(password, salt);
 
     const schema = Joi.object({
-      name: Joi.string().min(2).max(30),
-      about: Joi.string().min(2).max(30).optional(),
-      avatar: Joi.string().uri({ scheme: ['http', 'https'] }).optional(),
+      name: Joi.string().min(2).max(30).default(processedName),
+      about: Joi.string().min(2).max(30).default(processedAbout),
+      avatar: Joi.string().uri().allow(null).default(processedAvatar),
       email: Joi.string().email().required(),
       password: Joi.string().min(6).required(),
-    }).options({ abortEarly: false });
+    });
 
-    const { error } = schema.validate({
-      name,
-      about,
-      avatar,
+    const { error, value } = schema.validate({
+      name: processedName,
+      about: processedAbout,
+      avatar: processedAvatar,
       email,
       password,
     });
@@ -167,20 +175,14 @@ const createUser = async (req, res, next) => {
     }
 
     const user = await User.create({
-      name,
-      about,
-      avatar,
-      email,
+      name: value.name,
+      about: value.about,
+      avatar: value.avatar,
+      email: value.email,
       password: hash,
     });
 
-    let token;
-
-    try {
-      token = jwt.sign({ _id: user._id }, 'your_jwt_secret', { expiresIn: '7d' });
-    } catch (err) {
-      throw new Error('Ошибка при генерации токена');
-    }
+    const token = jwt.sign({ _id: user._id }, 'your_jwt_secret', { expiresIn: '7d' });
 
     return res.status(201).json({
       _id: user._id,
@@ -197,8 +199,12 @@ const createUser = async (req, res, next) => {
     if (err.name === 'MongoError' && err.code === 11000) {
       return next(new ConflictError('Пользователь с таким email уже существует'));
     }
-    return next(new ConflictError('Ошибка при создании пользователя', err));
+    return next(new BadRequestError('Ошибка при создании пользователя', err));
   }
+};
+
+module.exports = {
+  createUser,
 };
 
 // Авторизация пользователя
