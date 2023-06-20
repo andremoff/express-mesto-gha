@@ -10,8 +10,9 @@ const getCards = (req, res, next) => {
     .then((cards) => {
       if (!cards || cards.length === 0) {
         throw new NotFoundError('Карточки не найдены');
+      } else {
+        res.json({ data: cards });
       }
-      res.json({ data: cards });
     })
     .catch(next);
 };

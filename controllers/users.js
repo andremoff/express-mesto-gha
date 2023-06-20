@@ -82,47 +82,36 @@ const updateAvatar = async (req, res, next) => {
 
 // Создание нового пользователя
 const createUser = async (req, res, next) => {
-  const {
-    name,
-    about,
-    avatar,
-    email,
-    password,
-  } = req.body;
+  const { email, password } = req.body;
+  const { name, about, avatar } = req.body;
 
   try {
-    const salt = await bcrypt.genSalt(10);
-    const hash = await bcrypt.hash(password, salt);
-
     const existingUser = await User.findOne({ email });
 
     if (existingUser) {
       throw new ConflictError('Пользователь с таким email уже существует');
     }
 
+    const hashedPassword = await bcrypt.hash(password, 10);
     const user = await User.create({
+      email,
+      password: hashedPassword,
       name,
       about,
       avatar,
-      email,
-      password: hash,
     });
 
     const token = jwt.sign({ _id: user._id }, 'your_jwt_secret', { expiresIn: '7d' });
-
-    return res.status(201).json({
+    res.status(201).send({
       _id: user._id,
+      email: user.email,
       name: user.name,
       about: user.about,
       avatar: user.avatar,
-      email: user.email,
       token,
     });
   } catch (err) {
-    if (err.name === 'MongoError' && err.code === 11000) {
-      return next(new ConflictError('Пользователь с таким email уже существует'));
-    }
-    return next(new BadRequestError('Ошибка при создании пользователя', err));
+    next(new BadRequestError('Ошибка при создании пользователя', err));
   }
 };
 

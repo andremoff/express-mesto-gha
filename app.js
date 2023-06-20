@@ -4,8 +4,10 @@ const helmet = require('helmet');
 const session = require('express-session');
 const escapeHtml = require('escape-html');
 const rateLimit = require('express-rate-limit');
+const { celebrate } = require('celebrate');
 const cookieParser = require('cookie-parser');
 const { errors } = require('celebrate');
+const { userSchema, loginSchema } = require('./middlewares/validationSchemas');
 const { login, createUser } = require('./controllers/users');
 const usersRouter = require('./routes/users');
 const cardsRouter = require('./routes/cards');
@@ -32,7 +34,7 @@ app.use(session({
 app.use(express.json());
 app.use(cookieParser());
 
-app.post('/signup', (req, res, next) => {
+app.post('/signup', celebrate({ body: userSchema }), (req, res, next) => {
   const {
     name, about, avatar, email, password,
   } = req.body;
@@ -48,7 +50,7 @@ app.post('/signup', (req, res, next) => {
   createUser(req, res, next, sanitizedData);
 });
 
-app.post('/signin', (req, res, next) => {
+app.post('/signin', celebrate({ body: loginSchema }), (req, res, next) => {
   const { email, password } = req.body;
 
   const sanitizedData = {
