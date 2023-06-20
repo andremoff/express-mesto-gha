@@ -133,7 +133,6 @@ const updateAvatar = async (req, res, next) => {
 };
 
 // Создание нового пользователя
-// Создание нового пользователя
 const createUser = async (req, res, next) => {
   const {
     name = 'Жак-Ив Кусто',
@@ -146,6 +145,26 @@ const createUser = async (req, res, next) => {
   try {
     const salt = await bcrypt.genSalt(10);
     const hash = await bcrypt.hash(password, salt);
+
+    const schema = Joi.object({
+      name: Joi.string().min(2).max(30).required(),
+      about: Joi.string().min(2).max(30).optional(),
+      avatar: Joi.string().uri().optional(),
+      email: Joi.string().email().required(),
+      password: Joi.string().min(6).required(),
+    }).options({ abortEarly: false });
+
+    const { error } = schema.validate({
+      name,
+      about,
+      avatar,
+      email,
+      password,
+    });
+
+    if (error) {
+      throw new BadRequestError('Ошибка валидации', error);
+    }
 
     const user = await User.create({
       name,
@@ -172,6 +191,9 @@ const createUser = async (req, res, next) => {
       token,
     });
   } catch (err) {
+    if (err.name === 'ValidationError') {
+      return next(new BadRequestError('Ошибка валидации', err));
+    }
     if (err.name === 'MongoError' && err.code === 11000) {
       return next(new ConflictError('Пользователь с таким email уже существует'));
     }
