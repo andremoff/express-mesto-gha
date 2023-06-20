@@ -155,9 +155,9 @@ const createUser = async (req, res, next) => {
     const hash = await bcrypt.hash(password, salt);
 
     const schema = Joi.object({
-      name: Joi.string().min(2).max(30).default(processedName),
-      about: Joi.string().min(2).max(30).default(processedAbout),
-      avatar: Joi.string().uri().allow(null).default(processedAvatar),
+      name: Joi.string().min(2).max(30).default(defaultName),
+      about: Joi.string().min(2).max(30).default(defaultAbout),
+      avatar: Joi.string().uri().allow(null).default(defaultAvatar),
       email: Joi.string().email().required(),
       password: Joi.string().min(6).required(),
     });
@@ -172,6 +172,12 @@ const createUser = async (req, res, next) => {
 
     if (error) {
       throw new BadRequestError('Ошибка валидации', error);
+    }
+
+    const existingUser = await User.findOne({ email });
+
+    if (existingUser) {
+      throw new ConflictError('Пользователь с таким email уже существует');
     }
 
     const user = await User.create({
@@ -201,10 +207,6 @@ const createUser = async (req, res, next) => {
     }
     return next(new BadRequestError('Ошибка при создании пользователя', err));
   }
-};
-
-module.exports = {
-  createUser,
 };
 
 // Авторизация пользователя
