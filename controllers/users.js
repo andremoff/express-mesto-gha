@@ -176,7 +176,6 @@ const createUser = async (req, res, next) => {
       throw new Error('Ошибка при генерации токена');
     }
 
-    // Сохраняем токен в базе данных или на сервере
     return res.status(201).json({
       _id: user._id,
       name: user.name,
@@ -186,8 +185,8 @@ const createUser = async (req, res, next) => {
       token,
     });
   } catch (err) {
-    if (err instanceof BadRequestError) {
-      return next(err);
+    if (err.name === 'ValidationError') {
+      return next(new BadRequestError('Ошибка валидации', err));
     }
     if (err.name === 'MongoError' && err.code === 11000) {
       return next(new ConflictError('Пользователь с таким email уже существует'));
