@@ -10,6 +10,9 @@ const ConflictError = require('../errors/ConflictError');
 const getUsers = async (req, res, next) => {
   try {
     const users = await User.find({}).select('-password');
+    if (!users || users.length === 0) {
+      throw new NotFoundError('Пользователи не найдены');
+    }
     res.json({ data: users });
   } catch (err) {
     next(err);
@@ -19,14 +22,11 @@ const getUsers = async (req, res, next) => {
 // Получение пользователя по идентификатору
 const getUserById = async (req, res, next) => {
   const { userId } = req.params;
-
   try {
     const user = await User.findById(userId).select('-password');
-
     if (!user) {
       throw new NotFoundError('Пользователь с указанным ID не найден');
     }
-
     res.json({ data: user });
   } catch (err) {
     next(err);
@@ -34,34 +34,30 @@ const getUserById = async (req, res, next) => {
 };
 
 // Получение текущего пользователя
-const getCurrentUser = (req, res, next) => {
-  User.findById(req.user._id)
-    .select('-password')
-    .then((user) => {
-      if (!user) {
-        throw new NotFoundError('Пользователь не найден');
-      }
-      res.json({ data: user });
-    })
-    .catch(next);
+const getCurrentUser = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user._id).select('-password');
+    if (!user) {
+      throw new NotFoundError('Пользователь не найден');
+    }
+    res.json({ data: user });
+  } catch (err) {
+    next(err);
+  }
 };
 
 // Обновление данных пользователя
 const updateUser = async (req, res, next) => {
   const { name, about } = req.body;
-
   try {
-    const user = await User.findById(req.user._id).select('-password');
-
-    if (!user) {
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user._id,
+      { name, about },
+      { new: true, runValidators: true, context: 'query' },
+    ).select('-password');
+    if (!updatedUser) {
       throw new NotFoundError('Пользователь не найден');
     }
-
-    user.name = name;
-    user.about = about;
-
-    const updatedUser = await user.save();
-
     res.json({ data: updatedUser });
   } catch (err) {
     next(new BadRequestError('Ошибка при обновлении пользователя', err));
@@ -71,18 +67,13 @@ const updateUser = async (req, res, next) => {
 // Обновление аватара пользователя
 const updateAvatar = async (req, res, next) => {
   const { avatar } = req.body;
-
   try {
     const user = await User.findById(req.user._id).select('-password');
-
     if (!user) {
       throw new NotFoundError('Пользователь не найден');
     }
-
     user.avatar = avatar;
-
     const updatedUser = await user.save();
-
     res.json({ data: updatedUser });
   } catch (err) {
     next(new BadRequestError('Ошибка при обновлении аватара пользователя', err));
