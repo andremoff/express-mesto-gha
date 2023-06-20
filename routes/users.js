@@ -1,5 +1,6 @@
 const express = require('express');
 const { celebrate } = require('celebrate');
+
 const {
   getUsers,
   getCurrentUser,
@@ -8,6 +9,7 @@ const {
   updateAvatar,
   login,
 } = require('../controllers/users');
+
 const {
   userIdSchema,
   updateUserSchema,

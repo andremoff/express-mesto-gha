@@ -5,16 +5,16 @@ const ConflictError = require('../errors/ConflictError');
 const ForbiddenError = require('../errors/ForbiddenError');
 
 // Получение всех карточек
-const getCards = (req, res, next) => {
-  Card.find({})
-    .then((cards) => {
-      if (!cards || cards.length === 0) {
-        throw new NotFoundError('Карточки не найдены');
-      } else {
-        res.json({ data: cards });
-      }
-    })
-    .catch(next);
+const getCards = async (req, res, next) => {
+  try {
+    const cards = await Card.find({});
+    if (!cards || cards.length === 0) {
+      throw new NotFoundError('Карточки не найдены');
+    }
+    res.json({ data: cards });
+  } catch (err) {
+    next(err);
+  }
 };
 
 // Создание новой карточки

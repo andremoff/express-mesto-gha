@@ -82,8 +82,9 @@ const updateAvatar = async (req, res, next) => {
 
 // Создание нового пользователя
 const createUser = async (req, res, next) => {
-  const { email, password } = req.body;
-  const { name, about, avatar } = req.body;
+  const {
+    email, password, name, about, avatar,
+  } = req.body;
 
   try {
     const existingUser = await User.findOne({ email });

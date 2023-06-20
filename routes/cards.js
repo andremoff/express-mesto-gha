@@ -1,5 +1,6 @@
 const express = require('express');
 const { celebrate } = require('celebrate');
+
 const {
   getCards,
   createCard,
@@ -7,6 +8,7 @@ const {
   likeCard,
   dislikeCard,
 } = require('../controllers/cards');
+
 const {
   cardIdSchema,
   cardInfoSchema,
