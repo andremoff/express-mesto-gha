@@ -2,7 +2,10 @@ const express = require('express');
 const mongoose = require('mongoose');
 const helmet = require('helmet');
 const session = require('express-session');
-const { escapeHtml } = require('escape-html');
+const escapeHtml = require('escape-html');
+const rateLimit = require('express-rate-limit');
+const cookieParser = require('cookie-parser');
+const { celebrate, Joi, errors } = require('celebrate');
 const { login, createUser } = require('./controllers/users');
 const usersRouter = require('./routes/users');
 const cardsRouter = require('./routes/cards');
@@ -13,48 +16,67 @@ const NotFoundError = require('./errors/NotFoundError');
 const app = express();
 const PORT = 3000;
 
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+});
+
 app.use(helmet());
-app.use(express.json());
+app.use(limiter);
 app.use(session({
   secret: 'your_session_secret',
   resave: false,
   saveUninitialized: true,
   cookie: { secure: true },
 }));
+app.use(express.json());
+app.use(cookieParser());
 
-app.post('/signup', (req, res, next) => {
-  const {
-    name, about, avatar, email, password,
-  } = req.body;
-  const escapedBody = {
-    name: escapeHtml(name),
-    about: escapeHtml(about),
-    avatar: escapeHtml(avatar),
-    email: escapeHtml(email),
-    password,
+app.post('/signup', celebrate({
+  body: Joi.object().keys({
+    name: Joi.string().min(2).max(30),
+    about: Joi.string().min(2).max(30),
+    avatar: Joi.string().uri().allow(null),
+    email: Joi.string().email().required(),
+    password: Joi.string().min(6).required(),
+  }),
+}), (req, res, next) => {
+  req.body = {
+    name: escapeHtml(req.body.name),
+    about: escapeHtml(req.body.about),
+    avatar: escapeHtml(req.body.avatar),
+    email: escapeHtml(req.body.email),
+    password: req.body.password,
   };
-  req.body = escapedBody;
   next();
 }, createUser);
 
-app.post('/signin', (req, res, next) => {
-  const { email, password } = req.body;
-  const escapedBody = {
-    email: escapeHtml(email),
-    password,
+app.post('/signin', celebrate({
+  body: Joi.object().keys({
+    email: Joi.string().email().required(),
+    password: Joi.string().min(6).required(),
+  }),
+}), (req, res, next) => {
+  req.body = {
+    email: escapeHtml(req.body.email),
+    password: req.body.password,
   };
-  req.body = escapedBody;
   next();
 }, login);
 
 app.use('/users', auth, usersRouter);
 app.use('/cards', auth, cardsRouter);
 
+// Обработка ошибок celebrate/Joi
+app.use(errors());
+
+// Обработка несовпадающих маршрутов (404 ошибка)
 app.use((req, res, next) => {
   const err = new NotFoundError('Запрашиваемый ресурс не найден');
   next(err);
 });
 
+// Обработчик ошибок
 app.use(handleError);
 
 mongoose.connect('mongodb://localhost:27017/mestodb', { useNewUrlParser: true })

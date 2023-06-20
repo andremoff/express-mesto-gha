@@ -147,9 +147,9 @@ const createUser = async (req, res, next) => {
     const hash = await bcrypt.hash(password, salt);
 
     const schema = Joi.object({
-      name: Joi.string().min(2).max(30).required(),
+      name: Joi.string().min(2).max(30),
       about: Joi.string().min(2).max(30).optional(),
-      avatar: Joi.string().uri().optional(),
+      avatar: Joi.string().uri({ scheme: ['http', 'https'] }).optional(),
       email: Joi.string().email().required(),
       password: Joi.string().min(6).required(),
     }).options({ abortEarly: false });
