@@ -7,6 +7,7 @@ const NotFoundError = require('../errors/NotFoundError');
 const UnauthenticatedError = require('../errors/UnauthenticatedError');
 const ConflictError = require('../errors/ConflictError');
 
+// Получение всех пользователей
 const getUsers = async (req, res, next) => {
   try {
     const users = await User.find({}).select('-password');
@@ -16,6 +17,7 @@ const getUsers = async (req, res, next) => {
   }
 };
 
+// Получение пользователя по идентификатору
 const getUserById = async (req, res, next) => {
   const { userId } = req.params;
 
@@ -42,6 +44,7 @@ const getUserById = async (req, res, next) => {
   }
 };
 
+// Получение текущего пользователя
 const getCurrentUser = (req, res, next) => {
   User.findById(req.user._id)
     .select('-password')
@@ -54,6 +57,7 @@ const getCurrentUser = (req, res, next) => {
     .catch(next);
 };
 
+// Обновление данных пользователя
 const updateUser = async (req, res, next) => {
   const { name, about } = req.body;
 
@@ -93,6 +97,7 @@ const updateUser = async (req, res, next) => {
   }
 };
 
+// Обновление аватара пользователя
 const updateAvatar = async (req, res, next) => {
   const { avatar } = req.body;
 
@@ -127,9 +132,14 @@ const updateAvatar = async (req, res, next) => {
   }
 };
 
+// Создание нового пользователя
 const createUser = async (req, res, next) => {
   const {
-    name, about, avatar, email, password,
+    name = 'Жак-Ив Кусто',
+    about = 'Исследователь',
+    avatar = 'ссылка',
+    email,
+    password,
   } = req.body;
 
   try {
@@ -137,12 +147,12 @@ const createUser = async (req, res, next) => {
     const hash = await bcrypt.hash(password, salt);
 
     const schema = Joi.object({
-      name: Joi.string().min(2).max(30).optional(),
+      name: Joi.string().min(2).max(30).required(),
       about: Joi.string().min(2).max(30).optional(),
-      avatar: Joi.string().uri().optional(),
+      avatar: Joi.string().uri({ scheme: ['http', 'https'] }).optional(),
       email: Joi.string().email().required(),
       password: Joi.string().min(6).required(),
-    });
+    }).options({ abortEarly: false });
 
     const { error } = schema.validate({
       name,
@@ -156,14 +166,10 @@ const createUser = async (req, res, next) => {
       throw new BadRequestError('Ошибка валидации', error);
     }
 
-    const defaultName = name || 'Жак-Ив Кусто';
-    const defaultAbout = about || 'Исследователь';
-    const defaultAvatar = avatar || null;
-
     const user = await User.create({
-      name: defaultName,
-      about: defaultAbout,
-      avatar: defaultAvatar,
+      name,
+      about,
+      avatar,
       email,
       password: hash,
     });
@@ -191,10 +197,11 @@ const createUser = async (req, res, next) => {
     if (err.name === 'MongoError' && err.code === 11000) {
       return next(new ConflictError('Пользователь с таким email уже существует'));
     }
-    return next(new ConflictError('Ошибка при создании пользователя', err));
+    return next(new BadRequestError('Ошибка при создании пользователя', err));
   }
 };
 
+// Авторизация пользователя
 const login = async (req, res, next) => {
   const { email, password } = req.body;
 
