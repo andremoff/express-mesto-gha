@@ -5,7 +5,7 @@ const session = require('express-session');
 const escapeHtml = require('escape-html');
 const rateLimit = require('express-rate-limit');
 const cookieParser = require('cookie-parser');
-const { celebrate, Joi, errors } = require('celebrate');
+const { errors } = require('celebrate');
 const { login, createUser } = require('./controllers/users');
 const usersRouter = require('./routes/users');
 const cardsRouter = require('./routes/cards');
@@ -32,37 +32,32 @@ app.use(session({
 app.use(express.json());
 app.use(cookieParser());
 
-app.post('/signup', celebrate({
-  body: Joi.object().keys({
-    name: Joi.string().min(2).max(30).optional(),
-    about: Joi.string().min(2).max(30).optional(),
-    avatar: Joi.string().uri().allow(null).optional(),
-    email: Joi.string().email().required(),
-    password: Joi.string().min(6).required(),
-  }),
-}), (req, res, next) => {
-  req.body = {
-    name: escapeHtml(req.body.name),
-    about: escapeHtml(req.body.about),
-    avatar: escapeHtml(req.body.avatar),
-    email: escapeHtml(req.body.email),
-    password: req.body.password,
-  };
-  next();
-}, createUser);
+app.post('/signup', (req, res, next) => {
+  const {
+    name, about, avatar, email, password,
+  } = req.body;
 
-app.post('/signin', celebrate({
-  body: Joi.object().keys({
-    email: Joi.string().email().required(),
-    password: Joi.string().min(6).required(),
-  }),
-}), (req, res, next) => {
-  req.body = {
-    email: escapeHtml(req.body.email),
-    password: req.body.password,
+  const sanitizedData = {
+    name: escapeHtml(name),
+    about: escapeHtml(about),
+    avatar: escapeHtml(avatar),
+    email: escapeHtml(email),
+    password,
   };
-  next();
-}, login);
+
+  createUser(req, res, next, sanitizedData);
+});
+
+app.post('/signin', (req, res, next) => {
+  const { email, password } = req.body;
+
+  const sanitizedData = {
+    email: escapeHtml(email),
+    password,
+  };
+
+  login(req, res, next, sanitizedData);
+});
 
 app.use('/users', auth, usersRouter);
 app.use('/cards', auth, cardsRouter);

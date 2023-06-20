@@ -1,4 +1,3 @@
-const Joi = require('joi');
 const Card = require('../models/card');
 const BadRequestError = require('../errors/BadRequestError');
 const NotFoundError = require('../errors/NotFoundError');
@@ -22,14 +21,8 @@ const createCard = (req, res, next) => {
   const { name, link } = req.body;
   const owner = req.user._id;
 
-  const schema = Joi.object({
-    name: Joi.string().min(2).max(30).required(),
-    link: Joi.string().uri({ scheme: [/https?/] }).required(),
-  });
-
-  const { error } = schema.validate({ name, link });
-  if (error) {
-    return next(new BadRequestError(error.details[0].message));
+  if (!name || !link) {
+    throw new BadRequestError('Необходимо указать название и ссылку карточки');
   }
 
   return Card.create({ name, link, owner })
@@ -49,13 +42,8 @@ const createCard = (req, res, next) => {
 const likeCard = (req, res, next) => {
   const { cardId } = req.params;
 
-  const schema = Joi.object({
-    cardId: Joi.string().objectId().required(),
-  });
-
-  const { error } = schema.validate({ cardId });
-  if (error) {
-    return next(new BadRequestError('Некорректный ID карточки.', error));
+  if (!cardId) {
+    throw new BadRequestError('Необходимо указать ID карточки');
   }
 
   return Card.findByIdAndUpdate(
@@ -65,7 +53,7 @@ const likeCard = (req, res, next) => {
   )
     .then((card) => {
       if (!card) {
-        throw new NotFoundError('Карточка с указанным id не найдена.');
+        throw new NotFoundError('Карточка с указанным ID не найдена');
       }
       return res.json({ card });
     })
@@ -76,13 +64,8 @@ const likeCard = (req, res, next) => {
 const dislikeCard = (req, res, next) => {
   const { cardId } = req.params;
 
-  const schema = Joi.object({
-    cardId: Joi.string().objectId().required(),
-  });
-
-  const { error } = schema.validate({ cardId });
-  if (error) {
-    return next(new BadRequestError('Некорректный ID карточки.', error));
+  if (!cardId) {
+    throw new BadRequestError('Необходимо указать ID карточки');
   }
 
   return Card.findByIdAndUpdate(
@@ -92,7 +75,7 @@ const dislikeCard = (req, res, next) => {
   )
     .then((card) => {
       if (!card) {
-        throw new NotFoundError('Карточка с указанным id не найдена.');
+        throw new NotFoundError('Карточка с указанным ID не найдена');
       }
       return res.json({ card });
     })
@@ -103,22 +86,17 @@ const dislikeCard = (req, res, next) => {
 const deleteCard = (req, res, next) => {
   const { cardId } = req.params;
 
-  const schema = Joi.object({
-    cardId: Joi.string().hex().length(24).required(),
-  });
-
-  const { error } = schema.validate({ cardId });
-  if (error) {
-    return next(new BadRequestError('Некорректный ID карточки.', error));
+  if (!cardId) {
+    throw new BadRequestError('Необходимо указать ID карточки');
   }
 
   return Card.findById(cardId)
     .then((card) => {
       if (!card) {
-        throw new NotFoundError('Карточка с указанным id не найдена.');
+        throw new NotFoundError('Карточка с указанным ID не найдена');
       }
       if (card.owner.toString() !== req.user._id) {
-        throw new ForbiddenError('Вы не можете удалять чужие карточки.');
+        throw new ForbiddenError('Вы не можете удалять чужие карточки');
       }
       return Card.deleteOne(card);
     })
