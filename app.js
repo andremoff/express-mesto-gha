@@ -61,8 +61,10 @@ app.post('/signin', celebrate({ body: loginSchema }), (req, res, next) => {
   login(req, res, next, sanitizedData);
 });
 
-app.use('/users', auth, usersRouter);
-app.use('/cards', auth, cardsRouter);
+app.use(auth);
+
+app.use('/users', usersRouter);
+app.use('/cards', cardsRouter);
 
 // Обработка ошибок celebrate/Joi
 app.use(errors());
